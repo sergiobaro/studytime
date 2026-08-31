@@ -1,34 +1,26 @@
 import Foundation
 
-/// Drives the session clock for both timer modes.
-///
-/// The view owns one of these and calls `tick()` once a second; every state
-/// transition lives here so it can be exercised without a running app.
 @Observable
 final class StudyTimer {
     static let durationRange = 1...180
+    static let defaultMode = TimerMode.countdown
+    static let defaultDurationMinutes = 25
 
     private enum Key {
         static let mode = "timerMode"
         static let durationMinutes = "durationMinutes"
     }
 
-    // `mode` and `durationMinutes` are computed over private storage rather
-    // than stored properties with `didSet`. The @Observable macro rewrites
-    // stored properties into computed ones, so assigning to a property inside
-    // its own `didSet` re-enters the generated setter and recurses forever.
     private var storedMode: TimerMode
     private var storedDurationMinutes: Int
 
-    /// Switching modes stops the clock and resets it to the new mode's
-    /// starting value, so a half-finished countdown never keeps running
-    /// unseen behind the stopwatch.
+    // Switching modes stops the clock and resets it to the new mode's starting value
     var mode: TimerMode {
         get { storedMode }
         set {
             guard newValue != storedMode else { return }
             storedMode = newValue
-            defaults.set(newValue.rawValue, forKey: Key.mode)
+            store.set(newValue.rawValue, forKey: Key.mode)
             reset()
         }
     }
@@ -39,7 +31,7 @@ final class StudyTimer {
             let clamped = Self.clampDuration(newValue)
             guard clamped != storedDurationMinutes else { return }
             storedDurationMinutes = clamped
-            defaults.set(clamped, forKey: Key.durationMinutes)
+            store.set(clamped, forKey: Key.durationMinutes)
             if storedMode == .countdown { reset() }
         }
     }
@@ -47,26 +39,27 @@ final class StudyTimer {
     /// Seconds remaining in `.countdown`, seconds elapsed in `.stopwatch`.
     private(set) var seconds: Int
     private(set) var isRunning = false
+    private let store: KeyValueStore
 
-    @ObservationIgnored private let defaults: UserDefaults
+    init(store: KeyValueStore = UserDefaults.standard) {
+        self.store = store
 
-    init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
+        let storedMode: String? = store.value(forKey: Key.mode)
+        let storedDuration: Int? = store.value(forKey: Key.durationMinutes)
 
-        let storedMode = defaults.string(forKey: Key.mode).flatMap(TimerMode.init(rawValue:))
-        let storedDuration = defaults.object(forKey: Key.durationMinutes) as? Int
-
-        let mode = storedMode ?? .countdown
-        let durationMinutes = Self.clampDuration(storedDuration ?? 25)
+        let mode = storedMode.flatMap(TimerMode.init(rawValue:)) ?? Self.defaultMode
+        let durationMinutes = Self.clampDuration(storedDuration ?? Self.defaultDurationMinutes)
 
         self.storedMode = mode
         self.storedDurationMinutes = durationMinutes
         self.seconds = Self.startingSeconds(for: mode, durationMinutes: durationMinutes)
     }
 
-    /// A finished countdown has nothing left to run; a stopwatch never finishes.
     var isFinished: Bool {
-        mode == .countdown && seconds == 0
+        switch mode {
+        case .stopwatch: return false // a stopwarch never finishes
+        case .countdown: return (seconds == 0)
+        }
     }
 
     var canStart: Bool {

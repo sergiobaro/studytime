@@ -3,18 +3,18 @@ import Testing
 @testable import studytime
 
 struct StudyTimerTests {
+    
+    let store: InMemoryKeyValueStore
+    let timer: StudyTimer
 
-    /// Each test gets an isolated defaults suite so persistence never leaks
-    /// between cases or into the real app domain.
-    private static func makeTimer() -> StudyTimer {
-        let suiteName = "StudyTimerTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
-        return StudyTimer(defaults: defaults)
+    /// Swift Testing builds a fresh instance per test, so each case gets its
+    /// own empty store.
+    init() {
+        self.store = InMemoryKeyValueStore()
+        self.timer = StudyTimer(store: store)
     }
 
     @Test func countdownStartsAtDurationAndCountsDown() {
-        let timer = Self.makeTimer()
         timer.durationMinutes = 25
 
         #expect(timer.mode == .countdown)
@@ -28,7 +28,6 @@ struct StudyTimerTests {
     }
 
     @Test func countdownStopsAtZero() {
-        let timer = Self.makeTimer()
         timer.durationMinutes = 1
         timer.toggle()
 
@@ -44,7 +43,6 @@ struct StudyTimerTests {
     }
 
     @Test func finishedCountdownCannotRestartUntilReset() {
-        let timer = Self.makeTimer()
         timer.durationMinutes = 1
         timer.toggle()
         for _ in 0..<60 { timer.tick() }
@@ -59,7 +57,6 @@ struct StudyTimerTests {
     }
 
     @Test func stopwatchStartsAtZeroAndCountsUp() {
-        let timer = Self.makeTimer()
         timer.mode = .stopwatch
 
         #expect(timer.seconds == 0)
@@ -73,7 +70,6 @@ struct StudyTimerTests {
     }
 
     @Test func stopwatchRunsPastAnHour() {
-        let timer = Self.makeTimer()
         timer.mode = .stopwatch
         timer.toggle()
 
@@ -85,7 +81,6 @@ struct StudyTimerTests {
     }
 
     @Test func switchingModeStopsAndResets() {
-        let timer = Self.makeTimer()
         timer.durationMinutes = 10
         timer.toggle()
         timer.tick()
@@ -103,7 +98,6 @@ struct StudyTimerTests {
     }
 
     @Test func pauseHoldsTheClock() {
-        let timer = Self.makeTimer()
         timer.mode = .stopwatch
         timer.toggle()
         timer.tick()
@@ -115,7 +109,6 @@ struct StudyTimerTests {
     }
 
     @Test func changingDurationResetsOnlyTheCountdown() {
-        let timer = Self.makeTimer()
         timer.durationMinutes = 30
         #expect(timer.seconds == 30 * 60)
 
@@ -129,8 +122,6 @@ struct StudyTimerTests {
     }
 
     @Test func durationIsClampedToSupportedRange() {
-        let timer = Self.makeTimer()
-
         timer.durationMinutes = 0
         #expect(timer.durationMinutes == StudyTimer.durationRange.lowerBound)
 
@@ -152,18 +143,38 @@ struct StudyTimerTests {
     }
 
     @Test func modeAndDurationSurviveRelaunch() {
-        let suiteName = "StudyTimerTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
-        defaults.removePersistentDomain(forName: suiteName)
+        timer.durationMinutes = 42
+        timer.mode = .stopwatch
 
-        let first = StudyTimer(defaults: defaults)
-        first.durationMinutes = 42
-        first.mode = .stopwatch
+        // A second timer over the same store stands in for a relaunch.
+        let relaunched = StudyTimer(store: store)
+        #expect(relaunched.mode == .stopwatch)
+        #expect(relaunched.durationMinutes == 42)
+    }
 
-        let second = StudyTimer(defaults: defaults)
-        #expect(second.mode == .stopwatch)
-        #expect(second.durationMinutes == 42)
+    @Test func anEmptyStoreFallsBackToTheDefaults() {
+        #expect(timer.mode == StudyTimer.defaultMode)
+        #expect(timer.durationMinutes == StudyTimer.defaultDurationMinutes)
+        #expect(store.object(forKey: "timerMode") == nil)
+        #expect(store.object(forKey: "durationMinutes") == nil)
+    }
 
-        defaults.removePersistentDomain(forName: suiteName)
+    @Test func anUnrecognisedStoredModeFallsBackToTheDefault() {
+        let loaded = StudyTimer(store: InMemoryKeyValueStore(["timerMode": "hourglass"]))
+
+        #expect(loaded.mode == StudyTimer.defaultMode)
+    }
+
+    @Test func aStoredValueOfTheWrongTypeFallsBackToTheDefault() {
+        let loaded = StudyTimer(store: InMemoryKeyValueStore(["durationMinutes": "forty-two"]))
+
+        #expect(loaded.durationMinutes == StudyTimer.defaultDurationMinutes)
+    }
+
+    @Test func anOutOfRangeStoredDurationIsClampedOnLoad() {
+        let loaded = StudyTimer(store: InMemoryKeyValueStore(["durationMinutes": 9_999]))
+
+        #expect(loaded.durationMinutes == StudyTimer.durationRange.upperBound)
+        #expect(loaded.seconds == StudyTimer.durationRange.upperBound * 60)
     }
 }
