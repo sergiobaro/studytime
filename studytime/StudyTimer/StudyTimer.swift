@@ -5,15 +5,37 @@ final class StudyTimer {
     static let durationRange = 1...180
     static let defaultMode = TimerMode.countdown
     static let defaultDurationMinutes = 25
-
+    
     private enum Key {
         static let mode = "timerMode"
         static let durationMinutes = "durationMinutes"
     }
-
+    
     private var storedMode: TimerMode
     private var storedDurationMinutes: Int
+    
+    /// Seconds remaining in `.countdown`, seconds elapsed in `.stopwatch`.
+    private(set) var seconds: Int
+    private(set) var isRunning = false
+    private let store: KeyValueStore
+    
+    init(store: KeyValueStore = UserDefaults.standard) {
+        self.store = store
+        
+        let storedMode: String? = store.value(forKey: Key.mode)
+        let storedDuration: Int? = store.value(forKey: Key.durationMinutes)
+        
+        let mode = storedMode.flatMap(TimerMode.init(rawValue:)) ?? Self.defaultMode
+        let durationMinutes = Self.clampDuration(storedDuration ?? Self.defaultDurationMinutes)
+        
+        self.storedMode = mode
+        self.storedDurationMinutes = durationMinutes
+        self.seconds = Self.startingSeconds(for: mode, durationMinutes: durationMinutes)
+    }
+}
 
+extension StudyTimer {
+    
     // Switching modes stops the clock and resets it to the new mode's starting value
     var mode: TimerMode {
         get { storedMode }
@@ -24,7 +46,7 @@ final class StudyTimer {
             reset()
         }
     }
-
+    
     var durationMinutes: Int {
         get { storedDurationMinutes }
         set {
@@ -35,41 +57,22 @@ final class StudyTimer {
             if storedMode == .countdown { reset() }
         }
     }
-
-    /// Seconds remaining in `.countdown`, seconds elapsed in `.stopwatch`.
-    private(set) var seconds: Int
-    private(set) var isRunning = false
-    private let store: KeyValueStore
-
-    init(store: KeyValueStore = UserDefaults.standard) {
-        self.store = store
-
-        let storedMode: String? = store.value(forKey: Key.mode)
-        let storedDuration: Int? = store.value(forKey: Key.durationMinutes)
-
-        let mode = storedMode.flatMap(TimerMode.init(rawValue:)) ?? Self.defaultMode
-        let durationMinutes = Self.clampDuration(storedDuration ?? Self.defaultDurationMinutes)
-
-        self.storedMode = mode
-        self.storedDurationMinutes = durationMinutes
-        self.seconds = Self.startingSeconds(for: mode, durationMinutes: durationMinutes)
-    }
-
+    
     var isFinished: Bool {
         switch mode {
         case .stopwatch: return false // a stopwarch never finishes
         case .countdown: return (seconds == 0)
         }
     }
-
+    
     var canStart: Bool {
         isRunning || !isFinished
     }
-
+    
     var displayTime: String {
-        Self.formatted(seconds)
+        seconds.formatted(.clockTime)
     }
-
+    
     func toggle() {
         if isRunning {
             isRunning = false
@@ -77,16 +80,16 @@ final class StudyTimer {
             isRunning = true
         }
     }
-
+    
     func reset() {
         isRunning = false
         seconds = Self.startingSeconds(for: mode, durationMinutes: durationMinutes)
     }
-
+    
     /// Advances the clock by one second. Ignored while paused.
     func tick() {
         guard isRunning else { return }
-
+        
         switch mode {
         case .countdown:
             guard seconds > 0 else {
@@ -101,28 +104,18 @@ final class StudyTimer {
             seconds += 1
         }
     }
+}
 
-    private static func startingSeconds(for mode: TimerMode, durationMinutes: Int) -> Int {
+private extension StudyTimer {
+
+    static func startingSeconds(for mode: TimerMode, durationMinutes: Int) -> Int {
         switch mode {
         case .countdown: durationMinutes * 60
         case .stopwatch: 0
         }
     }
 
-    private static func clampDuration(_ minutes: Int) -> Int {
+    static func clampDuration(_ minutes: Int) -> Int {
         min(max(minutes, durationRange.lowerBound), durationRange.upperBound)
-    }
-
-    /// `MM:SS` under an hour, `H:MM:SS` at or above it — the stopwatch and a
-    /// long countdown both run past 60 minutes.
-    static func formatted(_ totalSeconds: Int) -> String {
-        let total = max(0, totalSeconds)
-        let hours = total / 3600
-        let minutes = (total % 3600) / 60
-        let seconds = total % 60
-
-        return hours > 0
-            ? String(format: "%d:%02d:%02d", hours, minutes, seconds)
-            : String(format: "%02d:%02d", minutes, seconds)
     }
 }

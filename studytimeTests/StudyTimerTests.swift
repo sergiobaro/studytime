@@ -129,19 +129,6 @@ struct StudyTimerTests {
         #expect(timer.durationMinutes == StudyTimer.durationRange.upperBound)
     }
 
-    @Test(arguments: [
-        (0, "00:00"),
-        (59, "00:59"),
-        (60, "01:00"),
-        (1500, "25:00"),
-        (3599, "59:59"),
-        (3600, "1:00:00"),
-        (10_800, "3:00:00"),
-    ])
-    func formattingSwitchesToHoursPastAnHour(seconds: Int, expected: String) {
-        #expect(StudyTimer.formatted(seconds) == expected)
-    }
-
     @Test func modeAndDurationSurviveRelaunch() {
         timer.durationMinutes = 42
         timer.mode = .stopwatch

@@ -10,9 +10,9 @@ struct KeyValueStoreTests {
         assertStoreBehaviour(InMemoryKeyValueStore())
     }
 
-    @Test func userDefaultsSatisfiesTheContract() {
+    @Test func userDefaultsSatisfiesTheContract() throws {
         let suiteName = "KeyValueStoreTests.\(UUID().uuidString)"
-        let defaults = UserDefaults(suiteName: suiteName)!
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
         defaults.removePersistentDomain(forName: suiteName)
 
         assertStoreBehaviour(defaults)
