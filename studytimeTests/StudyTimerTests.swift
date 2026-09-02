@@ -108,6 +108,43 @@ struct StudyTimerTests {
         #expect(timer.seconds == 1)
     }
 
+    @Test func pausingMidSessionMarksTheTimerAsPaused() {
+        timer.durationMinutes = 25
+        #expect(!timer.isPaused)
+
+        timer.toggle()
+        #expect(!timer.isPaused)
+
+        timer.tick()
+        timer.toggle()
+        #expect(timer.isPaused)
+
+        timer.reset()
+        #expect(!timer.isPaused)
+    }
+
+    @Test func aStoppedStopwatchIsPausedOnlyAfterItHasMoved() {
+        timer.mode = .stopwatch
+        #expect(!timer.isPaused)
+
+        timer.toggle()
+        timer.tick()
+        timer.toggle()
+        #expect(timer.isPaused)
+
+        timer.reset()
+        #expect(!timer.isPaused)
+    }
+
+    @Test func aFinishedCountdownIsNotPaused() {
+        timer.durationMinutes = 1
+        timer.toggle()
+        for _ in 0..<60 { timer.tick() }
+
+        #expect(timer.isFinished)
+        #expect(!timer.isPaused)
+    }
+
     @Test func changingDurationResetsOnlyTheCountdown() {
         timer.durationMinutes = 30
         #expect(timer.seconds == 30 * 60)

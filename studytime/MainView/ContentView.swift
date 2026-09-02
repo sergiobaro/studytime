@@ -39,7 +39,7 @@ struct ContentView: View {
                 .animation(.default, value: studyTimer.seconds)
 
             HStack(spacing: 16) {
-                Button(studyTimer.isRunning ? "Pause" : "Start") {
+                Button(startButtonTitle) {
                     studyTimer.toggle()
                 }
                 .disabled(!studyTimer.canStart)
@@ -59,6 +59,11 @@ struct ContentView: View {
         .onReceive(ticker) { _ in
             studyTimer.tick()
         }
+    }
+
+    private var startButtonTitle: String {
+        if studyTimer.isRunning { return "Pause" }
+        return studyTimer.isPaused ? "Resume" : "Start"
     }
 }
 

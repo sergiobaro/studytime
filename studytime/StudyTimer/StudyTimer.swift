@@ -68,6 +68,12 @@ extension StudyTimer {
     var canStart: Bool {
         isRunning || !isFinished
     }
+
+    /// True once the clock has moved away from its starting value but has not
+    /// been reset, so the next start continues the session rather than opening one.
+    var isPaused: Bool {
+        !isRunning && !isFinished && seconds != Self.startingSeconds(for: mode, durationMinutes: durationMinutes)
+    }
     
     var displayTime: String {
         seconds.formatted(.clockTime)
