@@ -4,18 +4,18 @@ import Combine
 struct ContentView: View {
     
     @State private var studyTimer = StudyTimer()
+    @State private var appearance = AppearanceSettings()
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 24) {
-            Picker("Mode", selection: $studyTimer.mode) {
-                ForEach(TimerMode.allCases) { mode in
-                    Text(mode.title).tag(mode)
-                }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            ThemedSegmentedPicker(
+                options: TimerMode.allCases,
+                selection: $studyTimer.mode,
+                theme: appearance.theme,
+                title: \.title
+            )
             .frame(maxWidth: 220)
 
             // Reserve the row so the window doesn't resize when the stepper hides.
@@ -49,8 +49,13 @@ struct ContentView: View {
                 }
             }
             .buttonStyle(.bordered)
+
+            BackgroundThemePicker(selection: $appearance.theme)
         }
         .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(appearance.theme.background.ignoresSafeArea())
+        .foregroundStyle(appearance.theme.foreground)
         .onReceive(ticker) { _ in
             studyTimer.tick()
         }
