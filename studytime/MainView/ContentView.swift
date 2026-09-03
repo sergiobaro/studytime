@@ -47,9 +47,10 @@ struct ContentView: View {
                 }
                 .disabled(!studyTimer.canStart)
 
-                Button("Reset") {
+                Button("Finish") {
                     studyTimer.reset()
                 }
+                .disabled(!studyTimer.isActive)
             }
             .buttonStyle(.bordered)
 

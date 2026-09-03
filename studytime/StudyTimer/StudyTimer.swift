@@ -69,6 +69,13 @@ extension StudyTimer {
         isRunning || !isFinished
     }
 
+    /// True while there is a session to finish: the clock is running, paused
+    /// mid-session, or sitting on a countdown that has run out. A timer still
+    /// on its starting value has nothing to finish.
+    var isActive: Bool {
+        isRunning || isPaused || isFinished
+    }
+
     /// True once the clock has moved away from its starting value but has not
     /// been reset, so the next start continues the session rather than opening one.
     var isPaused: Bool {

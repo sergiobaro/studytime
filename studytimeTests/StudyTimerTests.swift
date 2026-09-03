@@ -113,6 +113,38 @@ struct StudyTimerTests {
         #expect(!timer.tick())
     }
 
+    @Test func aFreshTimerHasNothingToFinish() {
+        #expect(!timer.isActive)
+
+        timer.mode = .stopwatch
+        #expect(!timer.isActive)
+    }
+
+    @Test func aStartedTimerStaysActiveUntilItIsReset() {
+        timer.durationMinutes = 25
+        timer.toggle()
+        #expect(timer.isActive)
+
+        // Still active once paused mid-session.
+        timer.tick()
+        timer.toggle()
+        #expect(timer.isActive)
+
+        timer.reset()
+        #expect(!timer.isActive)
+    }
+
+    @Test func aFinishedCountdownIsStillActive() {
+        timer.durationMinutes = 1
+        timer.toggle()
+        for _ in 0..<60 { timer.tick() }
+
+        // Start is disabled here, so Finish has to stay available or the
+        // timer could not be cleared.
+        #expect(!timer.canStart)
+        #expect(timer.isActive)
+    }
+
     @Test func pauseHoldsTheClock() {
         timer.mode = .stopwatch
         timer.toggle()
