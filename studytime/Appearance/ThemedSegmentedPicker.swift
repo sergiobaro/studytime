@@ -17,13 +17,36 @@ struct ThemedSegmentedPicker<Option: Identifiable & Hashable>: View {
         HStack(spacing: 2) {
             ForEach(options) { option in
                 segment(for: option)
+                    // Each segment publishes its frame for the indicator to
+                    // match; none of them draw it.
+                    .matchedGeometryEffect(
+                        id: option.id,
+                        in: indicatorNamespace,
+                        isSource: true
+                    )
             }
         }
         .padding(3)
-        .background(
-            Capsule(style: .continuous)
-                .fill(theme.foreground.opacity(0.12))
-        )
+        .background {
+            ZStack {
+                Capsule(style: .continuous)
+                    .fill(theme.foreground.opacity(0.12))
+
+                // One indicator for the whole control, sized and placed from
+                // the selected segment's frame. Drawing it here rather than in
+                // each segment's background keeps it a single view that slides
+                // across: a per-segment indicator is removed from one segment
+                // and inserted into the next, which animates as two views
+                // handing over rather than one moving.
+                Capsule(style: .continuous)
+                    .fill(theme.accent)
+                    .matchedGeometryEffect(
+                        id: selection.id,
+                        in: indicatorNamespace,
+                        isSource: false
+                    )
+            }
+        }
         .animation(.snappy(duration: 0.2), value: selection)
     }
 
@@ -39,14 +62,6 @@ struct ThemedSegmentedPicker<Option: Identifiable & Hashable>: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 5)
                 .foregroundStyle(isSelected ? theme.onAccent : theme.foreground.opacity(0.75))
-                .background {
-                    if isSelected {
-                        // Shared id lets the indicator slide between segments.
-                        Capsule(style: .continuous)
-                            .fill(theme.accent)
-                            .matchedGeometryEffect(id: "indicator", in: indicatorNamespace)
-                    }
-                }
                 .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
