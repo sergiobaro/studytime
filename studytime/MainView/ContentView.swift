@@ -5,11 +5,14 @@ struct ContentView: View {
     
     @State private var studyTimer = StudyTimer()
     @State private var appearance = AppearanceSettings()
+    @State private var tasks = TaskList()
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 24) {
+            TaskPicker(tasks: tasks, theme: appearance.theme)
+
             ThemedSegmentedPicker(
                 options: TimerMode.allCases,
                 selection: $studyTimer.mode,
@@ -57,7 +60,11 @@ struct ContentView: View {
         .background(appearance.theme.background.ignoresSafeArea())
         .foregroundStyle(appearance.theme.foreground)
         .onReceive(ticker) { _ in
-            studyTimer.tick()
+            // Only a second the clock actually counted is credited, so a
+            // paused or finished timer adds nothing to the task.
+            if studyTimer.tick() {
+                tasks.recordStudied(seconds: 1)
+            }
         }
     }
 

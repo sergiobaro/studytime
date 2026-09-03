@@ -97,6 +97,22 @@ struct StudyTimerTests {
         #expect(timer.seconds == 10 * 60)
     }
 
+    @Test func tickReportsOnlyTheSecondsItCounted() {
+        timer.durationMinutes = 1
+
+        // Not started yet.
+        #expect(!timer.tick())
+
+        timer.toggle()
+        #expect(timer.tick())
+
+        // Run it down: the tick that lands on zero still counts, later ones don't.
+        for _ in 0..<58 { timer.tick() }
+        #expect(timer.tick())
+        #expect(timer.seconds == 0)
+        #expect(!timer.tick())
+    }
+
     @Test func pauseHoldsTheClock() {
         timer.mode = .stopwatch
         timer.toggle()

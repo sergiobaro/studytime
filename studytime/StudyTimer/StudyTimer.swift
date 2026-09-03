@@ -93,21 +93,27 @@ extension StudyTimer {
     }
     
     /// Advances the clock by one second. Ignored while paused.
-    func tick() {
-        guard isRunning else { return }
+    ///
+    /// Returns whether a second of study was actually counted, so the caller
+    /// can credit it to the selected task.
+    @discardableResult
+    func tick() -> Bool {
+        guard isRunning else { return false }
         
         switch mode {
         case .countdown:
             guard seconds > 0 else {
                 isRunning = false
-                return
+                return false
             }
             seconds -= 1
             if seconds == 0 {
                 isRunning = false
             }
+            return true
         case .stopwatch:
             seconds += 1
+            return true
         }
     }
 }
