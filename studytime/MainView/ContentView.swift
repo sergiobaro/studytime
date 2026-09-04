@@ -21,25 +21,19 @@ struct ContentView: View {
             )
             .frame(maxWidth: 220)
 
-            // Reserve the row so the window doesn't resize when the stepper hides.
-            Group {
-                if studyTimer.mode == .countdown {
-                    Stepper(
-                        "Duration: \(studyTimer.durationMinutes) min",
-                        value: $studyTimer.durationMinutes,
-                        in: StudyTimer.durationRange
-                    )
-                    .disabled(studyTimer.isRunning)
-                    .frame(maxWidth: 220)
-                }
-            }
-            .frame(height: 24)
+            HStack(spacing: 12) {
+                // A matching empty slot on the left, so the clock stays
+                // centred whether or not the arrows are showing.
+                durationArrows.hidden()
 
-            Text(studyTimer.displayTime)
-                .font(.system(size: 64, weight: .bold, design: .rounded))
-                .monospacedDigit()
-                .contentTransition(.numericText())
-                .animation(.default, value: studyTimer.seconds)
+                Text(studyTimer.displayTime)
+                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    .monospacedDigit()
+                    .contentTransition(.numericText())
+                    .animation(.default, value: studyTimer.seconds)
+
+                durationArrows
+            }
 
             HStack(spacing: 16) {
                 Button(startButtonTitle) {
@@ -76,6 +70,23 @@ struct ContentView: View {
                 tasks.recordStudied(seconds: 1)
             }
         }
+    }
+
+    /// The countdown's duration arrows, in a fixed-width slot that is empty
+    /// in stopwatch mode — a stopwatch has no duration to set.
+    private var durationArrows: some View {
+        Group {
+            if studyTimer.mode == .countdown {
+                ThemedStepper(
+                    value: $studyTimer.durationMinutes,
+                    range: StudyTimer.durationRange,
+                    theme: appearance.theme,
+                    label: "duration"
+                )
+                .disabled(studyTimer.isRunning)
+            }
+        }
+        .frame(width: ThemedStepper.width)
     }
 
     private var startButtonTitle: String {
