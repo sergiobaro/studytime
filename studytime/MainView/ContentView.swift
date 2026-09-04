@@ -35,18 +35,19 @@ struct ContentView: View {
                 durationArrows
             }
 
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 Button(startButtonTitle) {
                     studyTimer.toggle()
                 }
+                .buttonStyle(ThemedButtonStyle(theme: appearance.theme, prominent: true))
                 .disabled(!studyTimer.canStart)
 
                 Button("Finish") {
                     studyTimer.reset()
                 }
+                .buttonStyle(ThemedButtonStyle(theme: appearance.theme))
                 .disabled(!studyTimer.isActive)
             }
-            .buttonStyle(.bordered)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
