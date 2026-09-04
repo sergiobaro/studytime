@@ -16,10 +16,16 @@ final class TaskList {
     private var storedTasks: [StudyTask]
     private var storedSelectionID: StudyTask.ID?
 
-    private let store: KeyValueStore
+    /// The session currently collecting time, if the clock is mid-run. Not
+    /// persisted: a relaunch starts a new session rather than reopening one.
+    private var openSession: (taskID: StudyTask.ID, sessionID: StudySession.ID)?
 
-    init(store: KeyValueStore = UserDefaults.standard) {
+    private let store: KeyValueStore
+    private let now: () -> Date
+
+    init(store: KeyValueStore = UserDefaults.standard, now: @escaping () -> Date = Date.init) {
         self.store = store
+        self.now = now
 
         let data: Data? = store.value(forKey: Key.tasks)
         self.storedTasks = data
@@ -43,6 +49,9 @@ extension TaskList {
         set {
             let id = storedTasks.contains { $0.id == newValue } ? newValue : nil
             guard id != storedSelectionID else { return }
+            // Time cannot carry across tasks, so the run being recorded ends
+            // with the switch.
+            endSession()
             storedSelectionID = id
             store.set(id?.uuidString, forKey: Key.selectedTaskID)
         }
@@ -72,6 +81,7 @@ extension TaskList {
         guard let index = storedTasks.firstIndex(where: { $0.id == id }) else { return }
 
         storedTasks.remove(at: index)
+        if openSession?.taskID == id { endSession() }
         if storedSelectionID == id { storedSelectionID = nil }
         persist()
     }
@@ -92,19 +102,80 @@ extension TaskList {
         return true
     }
 
-    /// Credits studied time to the selected task. Does nothing when no task is
-    /// selected — the timer still runs, it just isn't counted against anything.
+    /// Credits studied time to the selected task, and to the session it is
+    /// part of — opening one if the clock has just started running. Does
+    /// nothing when no task is selected: the timer still runs, it just isn't
+    /// counted against anything.
     func recordStudied(seconds: Int) {
         guard seconds > 0,
               let index = storedTasks.firstIndex(where: { $0.id == storedSelectionID })
         else { return }
 
         storedTasks[index].studiedSeconds += seconds
+        record(seconds: seconds, inSessionOf: index)
         persist()
+    }
+
+    /// Removes a recorded session, taking its time out of the task's total —
+    /// the total is the sum of the runs, so the two would otherwise disagree.
+    func removeSession(_ id: StudySession.ID) {
+        guard let taskIndex = storedTasks.firstIndex(where: { task in
+            task.sessions.contains { $0.id == id }
+        }),
+        let sessionIndex = storedTasks[taskIndex].sessions.firstIndex(where: { $0.id == id })
+        else { return }
+
+        let session = storedTasks[taskIndex].sessions.remove(at: sessionIndex)
+        storedTasks[taskIndex].studiedSeconds = max(
+            0,
+            storedTasks[taskIndex].studiedSeconds - session.seconds
+        )
+        // Deleting the run in progress stops it collecting any more time.
+        if openSession?.sessionID == id { endSession() }
+        persist()
+    }
+
+    /// Closes the run being recorded, so the next second counted starts a new
+    /// session. Called when the clock is finished or reset — pausing does not
+    /// end a session, it just leaves a gap inside it.
+    func endSession() {
+        openSession = nil
+    }
+
+    /// The session currently collecting time, if any.
+    var sessionInProgress: StudySession? {
+        guard let openSession,
+              let task = storedTasks.first(where: { $0.id == openSession.taskID })
+        else { return nil }
+
+        return task.sessions.first { $0.id == openSession.sessionID }
     }
 }
 
 private extension TaskList {
+
+    /// Extends the open session, or opens one on this task.
+    func record(seconds: Int, inSessionOf index: Int) {
+        let end = now()
+        let task = storedTasks[index]
+
+        if openSession?.taskID == task.id,
+           let sessionIndex = task.sessions.firstIndex(where: { $0.id == openSession?.sessionID }) {
+            storedTasks[index].sessions[sessionIndex].endedAt = end
+            storedTasks[index].sessions[sessionIndex].seconds += seconds
+            return
+        }
+
+        // The seconds have already elapsed by the time they are counted, so
+        // the run began that far back.
+        let session = StudySession(
+            startedAt: end.addingTimeInterval(-Double(seconds)),
+            endedAt: end,
+            seconds: seconds
+        )
+        storedTasks[index].sessions.append(session)
+        openSession = (taskID: task.id, sessionID: session.id)
+    }
 
     func persist() {
         store.set(try? JSONEncoder().encode(storedTasks), forKey: Key.tasks)

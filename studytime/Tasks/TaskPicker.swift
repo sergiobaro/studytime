@@ -10,6 +10,7 @@ struct TaskPicker: View {
     let theme: BackgroundTheme
 
     @State private var isEditing = false
+    @State private var isShowingHistory = false
 
     var body: some View {
         Menu {
@@ -40,6 +41,10 @@ struct TaskPicker: View {
             Button(tasks.tasks.isEmpty ? "Add Task…" : "Edit Tasks…") {
                 isEditing = true
             }
+
+            Button("History…") {
+                isShowingHistory = true
+            }
         } label: {
             label
         }
@@ -52,6 +57,9 @@ struct TaskPicker: View {
         .frame(maxWidth: 220)
         .sheet(isPresented: $isEditing) {
             TaskEditor(tasks: tasks)
+        }
+        .sheet(isPresented: $isShowingHistory) {
+            SessionHistoryView(tasks: tasks)
         }
     }
 

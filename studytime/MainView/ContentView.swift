@@ -71,6 +71,11 @@ struct ContentView: View {
                 tasks.recordStudied(seconds: 1)
             }
         }
+        // Finishing or resetting closes the run being recorded; pausing does
+        // not, so a resumed session keeps its original start date.
+        .onChange(of: studyTimer.isActive) { _, isActive in
+            if !isActive { tasks.endSession() }
+        }
     }
 
     /// The countdown's duration arrows, in a fixed-width slot that is empty
