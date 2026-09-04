@@ -53,13 +53,22 @@ struct ContentView: View {
                 .disabled(!studyTimer.isActive)
             }
             .buttonStyle(.bordered)
-
-            BackgroundThemePicker(selection: $appearance.theme)
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(appearance.theme.background.ignoresSafeArea())
         .foregroundStyle(appearance.theme.foreground)
+        // Anchored to the window rather than the stack, and on the trailing
+        // side so it stays clear of the traffic lights. The hidden title bar
+        // still reserves a safe area at the top, which the overlay reaches
+        // into so the button sits in the corner rather than below it.
+        .overlay(alignment: .topTrailing) {
+            AppearanceMenu(selection: $appearance.theme)
+                .padding(.top, 6)
+                .padding(.trailing, 10)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+                .ignoresSafeArea(.container, edges: .top)
+        }
         .onReceive(ticker) { _ in
             // Only a second the clock actually counted is credited, so a
             // paused or finished timer adds nothing to the task.

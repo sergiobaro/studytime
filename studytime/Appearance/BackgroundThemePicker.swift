@@ -3,6 +3,11 @@ import SwiftUI
 /// A grid of colour swatches for choosing the window background, captioned
 /// with the name of the theme under the pointer — or the selected one when
 /// nothing is hovered.
+///
+/// Drawn in the system appearance and *not* in the selected theme: the picker
+/// is where a theme is being judged, so the only colour that should change as
+/// the selection moves is the ring's position. Its own furniture staying put
+/// keeps the swatches comparable.
 struct BackgroundThemePicker: View {
     @Binding var selection: BackgroundTheme
 
@@ -50,7 +55,7 @@ struct BackgroundThemePicker: View {
     private var caption: some View {
         Text(Self.displayedName(hovered: hoveredTheme, selected: selection))
             .font(.caption)
-            .foregroundStyle(selection.foreground.opacity(0.75))
+            .foregroundStyle(.secondary)
             .lineLimit(1)
             // Fixed height so the grid does not shift as the name changes.
             .frame(height: 14)
@@ -77,12 +82,12 @@ struct BackgroundThemePicker: View {
             .fill(theme.swatch)
             .frame(width: swatchSize, height: swatchSize)
             // A hairline keeps pale swatches visible on a pale background.
-            .overlay(Circle().strokeBorder(selection.foreground.opacity(0.25), lineWidth: 1))
+            .overlay(Circle().strokeBorder(Color.primary.opacity(0.25), lineWidth: 1))
             .overlay {
-                // The ring sits outside the swatch, in the current theme's
-                // foreground so it contrasts with whatever is behind it.
+                // The ring sits outside the swatch, in the system label colour
+                // so it reads against the popover in light and dark alike.
                 Circle()
-                    .stroke(selection.foreground, lineWidth: 2)
+                    .stroke(Color.primary, lineWidth: 2)
                     .padding(-4)
                     .opacity(theme == selection ? 1 : 0)
             }
@@ -94,5 +99,4 @@ struct BackgroundThemePicker: View {
     @Previewable @State var selection = BackgroundTheme.ocean
     return BackgroundThemePicker(selection: $selection)
         .padding()
-        .background(BackgroundTheme.ocean.background)
 }
