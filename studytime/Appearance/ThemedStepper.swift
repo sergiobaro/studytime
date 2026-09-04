@@ -29,6 +29,8 @@ struct ThemedStepper: View {
             RoundedRectangle(cornerRadius: 6, style: .continuous)
                 .fill(theme.foreground.opacity(0.12))
         )
+        // Clipped to the bezel so a pressed half picks up its rounded corners.
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
         .foregroundStyle(theme.foreground)
         .opacity(isEnabled ? 1 : 0.4)
     }
@@ -50,12 +52,23 @@ struct ThemedStepper: View {
                 .contentShape(Rectangle())
                 .opacity(canStep ? 1 : 0.35)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(ArrowButtonStyle(theme: theme))
         .disabled(!canStep)
         // Held down, it repeats — the range runs to three hours, so stepping
         // it one minute per click would be tedious.
         .buttonRepeatBehavior(.enabled)
         .accessibilityLabel(label)
+    }
+}
+
+/// Lights the pressed half up, which `.plain` does not do. Held down the
+/// button repeats, so the highlight also shows that the repeat is running.
+private struct ArrowButtonStyle: ButtonStyle {
+    let theme: BackgroundTheme
+
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .background(theme.foreground.opacity(configuration.isPressed ? 0.22 : 0))
     }
 }
 
