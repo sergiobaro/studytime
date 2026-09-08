@@ -11,6 +11,7 @@ struct TaskPicker: View {
 
     @State private var isEditing = false
     @State private var isShowingHistory = false
+    @State private var isShowingCalendar = false
 
     var body: some View {
         Menu {
@@ -42,6 +43,10 @@ struct TaskPicker: View {
                 isEditing = true
             }
 
+            Button("Calendar…") {
+                isShowingCalendar = true
+            }
+
             Button("History…") {
                 isShowingHistory = true
             }
@@ -60,6 +65,9 @@ struct TaskPicker: View {
         }
         .sheet(isPresented: $isShowingHistory) {
             SessionHistoryView(tasks: tasks)
+        }
+        .sheet(isPresented: $isShowingCalendar) {
+            SessionCalendarView(tasks: tasks)
         }
     }
 
