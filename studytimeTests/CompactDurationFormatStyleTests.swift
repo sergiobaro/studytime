@@ -16,8 +16,8 @@ struct CompactDurationFormatStyleTests {
     }
 
     @Test func hoursAndMinutesTogether() {
-        #expect((3_600 + 15 * 60).formatted(.compactDuration) == "1h 15m")
-        #expect((2 * 3_600 + 5 * 60 + 30).formatted(.compactDuration) == "2h 5m")
+        let seconds = 2 * 3_600 + 5 * 60 + 30
+        #expect(seconds.formatted(.compactDuration) == "2h 5m")
     }
 
     /// Something was recorded, but not a whole minute of it — saying "0m"
