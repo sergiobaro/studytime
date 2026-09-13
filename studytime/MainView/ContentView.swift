@@ -21,18 +21,29 @@ struct ContentView: View {
             )
             .frame(maxWidth: 220)
 
-            HStack(spacing: 12) {
-                // A matching empty slot on the left, so the clock stays
-                // centred whether or not the arrows are showing.
-                durationArrows.hidden()
+            VStack(spacing: 4) {
+                HStack(spacing: 12) {
+                    // A matching empty slot on the left, so the clock stays
+                    // centred whether or not the arrows are showing.
+                    durationArrows.hidden()
 
-                Text(studyTimer.displayTime)
-                    .font(.system(size: 64, weight: .bold, design: .rounded))
+                    Text(studyTimer.displayTime)
+                        .font(.system(size: 64, weight: .bold, design: .rounded))
+                        .monospacedDigit()
+                        .contentTransition(.numericText())
+                        .animation(.default, value: studyTimer.seconds)
+
+                    durationArrows
+                }
+
+                // Always laid out and only faded in, so pausing doesn't shift
+                // the buttons below.
+                Text("Paused \(studyTimer.pausedTime)")
+                    .font(.system(size: 15, weight: .medium, design: .rounded))
                     .monospacedDigit()
-                    .contentTransition(.numericText())
-                    .animation(.default, value: studyTimer.seconds)
-
-                durationArrows
+                    .foregroundStyle(appearance.theme.foreground.opacity(0.65))
+                    .opacity(studyTimer.isPaused ? 1 : 0)
+                    .accessibilityHidden(!studyTimer.isPaused)
             }
 
             HStack(spacing: 12) {

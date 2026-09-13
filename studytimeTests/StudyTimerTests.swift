@@ -193,6 +193,53 @@ struct StudyTimerTests {
         #expect(!timer.isPaused)
     }
 
+    @Test func ticksWhilePausedCountThePause() {
+        timer.durationMinutes = 25
+        timer.toggle()
+        timer.tick()
+        timer.toggle()
+
+        for _ in 0..<42 { timer.tick() }
+
+        #expect(timer.pausedSeconds == 42)
+        #expect(timer.pausedTime == "00:42")
+        #expect(timer.seconds == 25 * 60 - 1)
+    }
+
+    @Test func resumingOrResettingClearsThePause() {
+        timer.mode = .stopwatch
+        timer.toggle()
+        timer.tick()
+        timer.toggle()
+        timer.tick()
+        #expect(timer.pausedSeconds == 1)
+
+        // Each pause starts from zero.
+        timer.toggle()
+        #expect(timer.pausedSeconds == 0)
+        timer.tick()
+        #expect(timer.pausedSeconds == 0)
+        timer.toggle()
+        #expect(timer.pausedSeconds == 0)
+
+        timer.tick()
+        timer.reset()
+        #expect(timer.pausedSeconds == 0)
+    }
+
+    @Test func onlyAPauseIsCounted() {
+        // Not started yet.
+        timer.tick()
+        #expect(timer.pausedSeconds == 0)
+
+        // A finished countdown is not paused either.
+        timer.durationMinutes = 1
+        timer.toggle()
+        for _ in 0..<60 { timer.tick() }
+        timer.tick()
+        #expect(timer.pausedSeconds == 0)
+    }
+
     @Test func changingDurationResetsOnlyTheCountdown() {
         timer.durationMinutes = 30
         #expect(timer.seconds == 30 * 60)
