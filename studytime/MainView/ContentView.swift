@@ -11,7 +11,10 @@ struct ContentView: View {
 
     var body: some View {
         VStack(spacing: 24) {
-            TaskPicker(tasks: tasks, theme: appearance.theme)
+            TaskPicker(tasks: tasks, theme: appearance.theme) {
+                // The imported tasks replace the one the clock was counting for.
+                studyTimer.reset()
+            }
 
             ThemedSegmentedPicker(
                 options: TimerMode.allCases,

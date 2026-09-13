@@ -8,10 +8,13 @@ import SwiftUI
 struct TaskPicker: View {
     let tasks: TaskList
     let theme: BackgroundTheme
+    /// Called after an import has replaced the tasks.
+    var onRestore: () -> Void = {}
 
     @State private var isEditing = false
     @State private var isShowingHistory = false
     @State private var isShowingCalendar = false
+    @State private var backupAction: TaskBackupAction?
 
     var body: some View {
         Menu {
@@ -50,6 +53,17 @@ struct TaskPicker: View {
             Button("History…") {
                 isShowingHistory = true
             }
+
+            Divider()
+
+            Button("Export Data…") {
+                backupAction = .export
+            }
+            .disabled(tasks.tasks.isEmpty)
+
+            Button("Import Data…") {
+                backupAction = .import
+            }
         } label: {
             label
         }
@@ -69,6 +83,7 @@ struct TaskPicker: View {
         .sheet(isPresented: $isShowingCalendar) {
             SessionCalendarView(tasks: tasks)
         }
+        .taskBackupTransfer(tasks: tasks, action: $backupAction, onRestore: onRestore)
     }
 
     private var label: some View {

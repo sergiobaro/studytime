@@ -150,6 +150,50 @@ extension TaskList {
 
         return task.sessions.first { $0.id == openSession.sessionID }
     }
+
+    /// Every task and the selection, ready to export.
+    func backup() -> StudyTimeBackup {
+        StudyTimeBackup(exportedAt: now(), tasks: storedTasks, selectedTaskID: storedSelectionID)
+    }
+
+    /// Replaces every task, and its history, with the ones in a backup.
+    ///
+    /// Throws — and changes nothing — for a backup `validatedTasks(in:)`
+    /// rejects. The run being recorded ends, since its task is being replaced.
+    func restore(_ backup: StudyTimeBackup) throws {
+        let tasks = try Self.validatedTasks(in: backup)
+
+        endSession()
+        storedTasks = tasks
+        // Same rule as the stored selection on launch: drop one naming no task.
+        storedSelectionID = tasks.contains { $0.id == backup.selectedTaskID }
+            ? backup.selectedTaskID
+            : nil
+        persist()
+    }
+
+    /// A backup's tasks with their names tidied, or an error if they include
+    /// anything the list could not have made itself: blank or repeated names,
+    /// repeated ids, or negative times.
+    static func validatedTasks(in backup: StudyTimeBackup) throws -> [StudyTask] {
+        var taskIDs = Set<StudyTask.ID>()
+        var names = Set<String>()
+        var sessionIDs = Set<StudySession.ID>()
+
+        return try backup.tasks.map { task in
+            guard let name = sanitised(task.name),
+                  taskIDs.insert(task.id).inserted,
+                  names.insert(name.localizedLowercase).inserted,
+                  task.studiedSeconds >= 0,
+                  // Sessions are removed by id, so a repeat would delete the wrong one.
+                  task.sessions.allSatisfy({ $0.seconds >= 0 && sessionIDs.insert($0.id).inserted })
+            else { throw StudyTimeBackupError.invalidContents }
+
+            var task = task
+            task.name = name
+            return task
+        }
+    }
 }
 
 private extension TaskList {
