@@ -6,7 +6,7 @@ enum TaskBackupAction {
     case `import`
 }
 
-/// The file dialogs behind the task menu's Export and Import items, and the
+/// The file dialogs behind the Export and Import buttons, and the
 /// confirmation an import needs before it replaces everything.
 struct TaskBackupTransfer: ViewModifier {
     let tasks: TaskList

@@ -8,7 +8,6 @@ import SwiftUI
 struct SessionCalendarView: View {
     let tasks: TaskList
 
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.calendar) private var calendar
 
     /// The first of the month on show.
@@ -38,16 +37,9 @@ struct SessionCalendarView: View {
 
             breakdown(in: month)
 
-            HStack {
-                Text(summary(of: month))
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-
-                Spacer()
-
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-            }
+            Text(summary(of: month))
+                .font(.callout)
+                .foregroundStyle(.secondary)
         }
         .padding()
         .frame(minWidth: 460, minHeight: 520)
@@ -61,6 +53,8 @@ private extension SessionCalendarView {
 
     var header: some View {
         HStack(spacing: 8) {
+            SheetCloseButton()
+
             Text("Calendar")
                 .font(.headline)
 

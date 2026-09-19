@@ -7,24 +7,20 @@ import SwiftUI
 struct SessionHistoryView: View {
     let tasks: TaskList
 
-    @Environment(\.dismiss) private var dismiss
-
     private var days: [SessionDay] {
         SessionHistory.days(from: tasks.tasks)
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("History")
-                .font(.headline)
+            HStack(spacing: 8) {
+                SheetCloseButton()
+
+                Text("History")
+                    .font(.headline)
+            }
 
             content
-
-            HStack {
-                Spacer()
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-            }
         }
         .padding()
         .frame(minWidth: 440, minHeight: 380)
