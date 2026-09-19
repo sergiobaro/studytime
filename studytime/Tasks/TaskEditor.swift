@@ -7,14 +7,17 @@ import SwiftUI
 struct TaskEditor: View {
     let tasks: TaskList
 
-    @Environment(\.dismiss) private var dismiss
     @State private var newTaskName = ""
     @FocusState private var isNameFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Tasks")
-                .font(.headline)
+            HStack(spacing: 8) {
+                SheetCloseButton()
+
+                Text("Tasks")
+                    .font(.headline)
+            }
 
             HStack {
                 TextField("New task", text: $newTaskName)
@@ -27,15 +30,15 @@ struct TaskEditor: View {
             }
 
             list
-
-            HStack {
-                Spacer()
-                Button("Done") { dismiss() }
-                    .keyboardShortcut(.cancelAction)
-            }
         }
         .padding()
         .frame(minWidth: 340, minHeight: 320)
+        // A sheet inherits the presenting view's foreground style, and the
+        // task picker sits inside the themed stack — without this, a dark
+        // theme's white text would land on the sheet's light background.
+        // `Color.primary`, not `.primary`: the latter is the first level of
+        // the inherited style, so it would resolve to that same white.
+        .foregroundStyle(Color.primary)
         .onAppear { isNameFieldFocused = true }
     }
 
