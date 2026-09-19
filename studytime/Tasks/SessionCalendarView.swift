@@ -29,20 +29,28 @@ struct SessionCalendarView: View {
         return VStack(alignment: .leading, spacing: 14) {
             header
 
-            weekdayHeader
+            // The picked day's tasks sit beside the month rather than under
+            // it, so the grid keeps its height and the list its own column.
+            HStack(alignment: .top, spacing: 16) {
+                VStack(alignment: .leading, spacing: 14) {
+                    weekdayHeader
 
-            grid(for: month)
+                    grid(for: month)
 
-            Divider()
+                    Text(summary(of: month))
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(minWidth: 420)
 
-            breakdown(in: month)
+                Divider()
 
-            Text(summary(of: month))
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                breakdown(in: month)
+                    .frame(width: 240)
+            }
         }
         .padding()
-        .frame(minWidth: 460, minHeight: 520)
+        .frame(minWidth: 720, minHeight: 420)
         .onAppear(perform: selectTodayIfStudied)
     }
 }
@@ -254,10 +262,10 @@ private extension SessionCalendarView {
             } else {
                 Text(placeholder(for: month))
                     .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+        .frame(maxHeight: .infinity, alignment: .topLeading)
     }
 
     /// A task's time, with a bar behind it for its share of the day.
