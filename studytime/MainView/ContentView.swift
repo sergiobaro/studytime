@@ -36,6 +36,10 @@ struct ContentView: View {
                         .monospacedDigit()
                         .contentTransition(.numericText())
                         .animation(.default, value: studyTimer.seconds)
+                        // Greyed out while paused, so a stopped clock reads
+                        // differently from a running one at a glance.
+                        .foregroundStyle(appearance.theme.foreground.opacity(studyTimer.isPaused ? 0.4 : 1))
+                        .animation(.default, value: studyTimer.isPaused)
 
                     durationArrows
                 }
@@ -45,7 +49,6 @@ struct ContentView: View {
                 Text(pausedCaption)
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .monospacedDigit()
-                    .foregroundStyle(appearance.theme.foreground.opacity(0.65))
                     .opacity(showsPausedCaption ? 1 : 0)
                     .accessibilityHidden(!showsPausedCaption)
             }
