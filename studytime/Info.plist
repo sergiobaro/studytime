@@ -10,14 +10,14 @@
 	<key>UTExportedTypeDeclarations</key>
 	<array>
 		<dict>
-			<key>UTTypeIdentifier</key>
-			<string>sbs.studytime.backup</string>
-			<key>UTTypeDescription</key>
-			<string>StudyTime Backup</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.json</string>
 			</array>
+			<key>UTTypeDescription</key>
+			<string>StudyTime Backup</string>
+			<key>UTTypeIdentifier</key>
+			<string>sbs.studytime.backup</string>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
