@@ -17,7 +17,8 @@ final class StudyTimer {
     /// Seconds remaining in `.countdown`, seconds elapsed in `.stopwatch`.
     private(set) var seconds: Int
     private(set) var isRunning = false
-    /// How long the current pause has lasted. Zero whenever the timer isn't paused.
+    /// How long the current pause has lasted, or how long ago a countdown ran
+    /// out. Zero whenever the timer is neither paused nor finished.
     private(set) var pausedSeconds = 0
     private let store: KeyValueStore
     
@@ -97,6 +98,10 @@ extension StudyTimer {
             isRunning = false
         } else if !isFinished {
             isRunning = true
+        } else {
+            // A finished countdown can't restart, and keeps counting the time
+            // since it ran out.
+            return
         }
         // Each pause is timed on its own, from the moment it starts.
         pausedSeconds = 0
@@ -108,15 +113,15 @@ extension StudyTimer {
         pausedSeconds = 0
     }
 
-    /// Advances the clock by one second. While paused, the second goes to
-    /// the pause instead.
+    /// Advances the clock by one second. While paused, or once a countdown
+    /// has run out, the second goes to `pausedSeconds` instead.
     ///
     /// Returns whether a second of study was actually counted, so the caller
     /// can credit it to the selected task.
     @discardableResult
     func tick() -> Bool {
         guard isRunning else {
-            if isPaused { pausedSeconds += 1 }
+            if isPaused || isFinished { pausedSeconds += 1 }
             return false
         }
         

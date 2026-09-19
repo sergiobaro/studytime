@@ -227,16 +227,48 @@ struct StudyTimerTests {
         #expect(timer.pausedSeconds == 0)
     }
 
-    @Test func onlyAPauseIsCounted() {
-        // Not started yet.
+    @Test func aTimerThatHasNotStartedCountsNothing() {
         timer.tick()
         #expect(timer.pausedSeconds == 0)
 
-        // A finished countdown is not paused either.
+        timer.mode = .stopwatch
+        timer.tick()
+        #expect(timer.pausedSeconds == 0)
+    }
+
+    @Test func ticksAfterACountdownFinishesCountTheTimeSince() {
         timer.durationMinutes = 1
         timer.toggle()
         for _ in 0..<60 { timer.tick() }
-        timer.tick()
+        // The tick that lands on zero is study time, not time since.
+        #expect(timer.pausedSeconds == 0)
+
+        for _ in 0..<42 { timer.tick() }
+
+        #expect(timer.pausedSeconds == 42)
+        #expect(timer.pausedTime == "00:42")
+    }
+
+    @Test func togglingAFinishedCountdownKeepsCountingSinceItFinished() {
+        timer.durationMinutes = 1
+        timer.toggle()
+        for _ in 0..<60 { timer.tick() }
+        for _ in 0..<5 { timer.tick() }
+
+        timer.toggle()
+
+        #expect(!timer.isRunning)
+        #expect(timer.pausedSeconds == 5)
+    }
+
+    @Test func resettingAFinishedCountdownClearsTheTimeSince() {
+        timer.durationMinutes = 1
+        timer.toggle()
+        for _ in 0..<60 { timer.tick() }
+        for _ in 0..<5 { timer.tick() }
+
+        timer.reset()
+
         #expect(timer.pausedSeconds == 0)
     }
 

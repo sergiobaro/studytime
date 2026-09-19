@@ -6,6 +6,7 @@ struct ContentView: View {
     @State private var studyTimer = StudyTimer()
     @State private var appearance = AppearanceSettings()
     @State private var tasks = TaskList()
+    @State private var countdownAlert = CountdownAlert()
 
     private let ticker = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
 
@@ -39,14 +40,14 @@ struct ContentView: View {
                     durationArrows
                 }
 
-                // Always laid out and only faded in, so pausing doesn't shift
-                // the buttons below.
-                Text("Paused \(studyTimer.pausedTime)")
+                // Always laid out and only faded in, so pausing or finishing
+                // doesn't shift the buttons below.
+                Text(pausedCaption)
                     .font(.system(size: 15, weight: .medium, design: .rounded))
                     .monospacedDigit()
                     .foregroundStyle(appearance.theme.foreground.opacity(0.65))
-                    .opacity(studyTimer.isPaused ? 1 : 0)
-                    .accessibilityHidden(!studyTimer.isPaused)
+                    .opacity(showsPausedCaption ? 1 : 0)
+                    .accessibilityHidden(!showsPausedCaption)
             }
 
             HStack(spacing: 12) {
@@ -90,6 +91,9 @@ struct ContentView: View {
         .onChange(of: studyTimer.isActive) { _, isActive in
             if !isActive { tasks.endSession() }
         }
+        .onChange(of: studyTimer.isRunning) {
+            countdownAlert.update(for: studyTimer)
+        }
     }
 
     /// The countdown's duration arrows, in a fixed-width slot that is empty
@@ -107,6 +111,16 @@ struct ContentView: View {
             }
         }
         .frame(width: ThemedStepper.width)
+    }
+
+    private var showsPausedCaption: Bool {
+        studyTimer.isPaused || studyTimer.isFinished
+    }
+
+    private var pausedCaption: String {
+        studyTimer.isFinished
+            ? "Finished \(studyTimer.pausedTime) ago"
+            : "Paused \(studyTimer.pausedTime)"
     }
 
     private var startButtonTitle: String {

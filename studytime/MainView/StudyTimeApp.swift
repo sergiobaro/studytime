@@ -2,11 +2,12 @@ import SwiftUI
 
 @main
 struct StudyTimeApp: App {
-    #if os(macOS)
     init() {
+        #if os(macOS)
         NSWindow.allowsAutomaticWindowTabbing = false
+        #endif
+        SystemCountdownNotifier.shared.activate()
     }
-    #endif
 
     var body: some Scene {
         #if os(macOS)
