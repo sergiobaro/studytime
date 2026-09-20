@@ -8,6 +8,7 @@ struct TaskEditor: View {
     let tasks: TaskList
 
     @State private var newTaskName = ""
+    @State private var pendingDeletionTask: StudyTask?
     @FocusState private var isNameFieldFocused: Bool
 
     var body: some View {
@@ -39,6 +40,12 @@ struct TaskEditor: View {
         // `Color.primary`, not `.primary`: the latter is the first level of
         // the inherited style, so it would resolve to that same white.
         .foregroundStyle(Color.primary)
+        .alert("Delete Task?", isPresented: isConfirmingDeletion, presenting: pendingDeletionTask) { task in
+            Button("Delete", role: .destructive) { tasks.remove(task.id) }
+            Button("Cancel", role: .cancel) {}
+        } message: { task in
+            Text(deletionMessage(for: task))
+        }
         .onAppear { isNameFieldFocused = true }
     }
 
@@ -73,7 +80,7 @@ struct TaskEditor: View {
                 .foregroundStyle(.secondary)
 
             Button {
-                tasks.remove(task.id)
+                pendingDeletionTask = task
             } label: {
                 Image(systemName: "trash")
             }
@@ -81,6 +88,25 @@ struct TaskEditor: View {
             .help("Delete \(task.name)")
             .accessibilityLabel("Delete \(task.name)")
         }
+    }
+
+    private var isConfirmingDeletion: Binding<Bool> {
+        Binding(
+            get: { pendingDeletionTask != nil },
+            set: { if !$0 { pendingDeletionTask = nil } }
+        )
+    }
+
+    /// Names the time about to go with the task: its total is the only part
+    /// of a deletion that cannot be typed back in afterwards.
+    private func deletionMessage(for task: StudyTask) -> String {
+        guard task.studiedSeconds > 0 else {
+            return "\"\(task.name)\" will be deleted. Nothing has been studied against it yet."
+        }
+
+        return "\(task.studiedSeconds.formatted(.compactDuration)) studied against "
+            + "\"\(task.name)\" will be deleted along with its session history. "
+            + "This can't be undone."
     }
 
     /// Blank names and repeats are rejected by `TaskList`; the button reflects
