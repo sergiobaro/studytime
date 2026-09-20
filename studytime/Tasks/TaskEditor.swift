@@ -9,7 +9,13 @@ struct TaskEditor: View {
 
     @State private var newTaskName = ""
     @State private var pendingDeletionTask: StudyTask?
+    /// The task whose row is currently a text field, and the name being typed
+    /// into it. The draft is held here rather than written straight through so
+    /// that Escape can abandon it.
+    @State private var renamingTaskID: StudyTask.ID?
+    @State private var draftName = ""
     @FocusState private var isNameFieldFocused: Bool
+    @FocusState private var isRenameFieldFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -68,26 +74,74 @@ struct TaskEditor: View {
         }
     }
 
+    @ViewBuilder
     private func row(for task: StudyTask) -> some View {
-        HStack {
-            Text(task.name)
-                .lineLimit(1)
+        if renamingTaskID == task.id {
+            renameField(for: task)
+        } else {
+            HStack {
+                Text(task.name)
+                    .lineLimit(1)
+                    // Double-click is the list-rename idiom; the pencil is
+                    // there for anyone who doesn't think to try it.
+                    .onTapGesture(count: 2) { beginRename(task) }
 
-            Spacer(minLength: 8)
+                Spacer(minLength: 8)
 
-            Text(task.studiedTime)
-                .monospacedDigit()
-                .foregroundStyle(.secondary)
+                Text(task.studiedTime)
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
 
-            Button {
-                pendingDeletionTask = task
-            } label: {
-                Image(systemName: "trash")
+                Button {
+                    beginRename(task)
+                } label: {
+                    Image(systemName: "pencil")
+                }
+                .buttonStyle(.borderless)
+                .help("Rename \(task.name)")
+                .accessibilityLabel("Rename \(task.name)")
+
+                Button {
+                    pendingDeletionTask = task
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .help("Delete \(task.name)")
+                .accessibilityLabel("Delete \(task.name)")
             }
-            .buttonStyle(.borderless)
-            .help("Delete \(task.name)")
-            .accessibilityLabel("Delete \(task.name)")
         }
+    }
+
+    /// Replaces the whole row while it is being renamed, so the time and the
+    /// trash button can't be clicked by mistake with the field open.
+    private func renameField(for task: StudyTask) -> some View {
+        TextField("Task name", text: $draftName)
+            .textFieldStyle(.roundedBorder)
+            .focused($isRenameFieldFocused)
+            // Focus is taken once the field exists; asking for it in
+            // `beginRename` would land before there is anything to focus.
+            .onAppear { isRenameFieldFocused = true }
+            .onSubmit { commitRename(task) }
+            // Escape abandons the edit, and clicking away keeps it — both as
+            // a Finder rename behaves.
+            .onExitCommand { renamingTaskID = nil }
+            .onChange(of: isRenameFieldFocused) { _, isFocused in
+                if !isFocused, renamingTaskID == task.id { commitRename(task) }
+            }
+    }
+
+    private func beginRename(_ task: StudyTask) {
+        draftName = task.name
+        renamingTaskID = task.id
+    }
+
+    /// Clears the row first, so the focus it gives up doesn't commit a second
+    /// time. A blank, unchanged or duplicate name is rejected by `TaskList`,
+    /// which leaves the task as it was.
+    private func commitRename(_ task: StudyTask) {
+        renamingTaskID = nil
+        tasks.rename(task.id, to: draftName)
     }
 
     private var isConfirmingDeletion: Binding<Bool> {
