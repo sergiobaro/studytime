@@ -7,6 +7,10 @@ import SwiftUI
 struct SessionHistoryView: View {
     let tasks: TaskList
 
+    /// The session the trash button asked about, kept until the alert is
+    /// answered.
+    @State private var pendingDeletion: RecordedSession?
+
     private var days: [SessionDay] {
         SessionHistory.days(from: tasks.tasks)
     }
@@ -24,6 +28,31 @@ struct SessionHistoryView: View {
         }
         .padding()
         .frame(minWidth: 440, minHeight: 380)
+        .alert("Delete Session?", isPresented: isConfirmingDeletion, presenting: pendingDeletion) { recorded in
+            Button("Delete", role: .destructive) { tasks.removeSession(recorded.id) }
+            Button("Cancel", role: .cancel) {}
+        } message: { recorded in
+            Text(deletionMessage(for: recorded))
+        }
+    }
+
+    private var isConfirmingDeletion: Binding<Bool> {
+        Binding(
+            get: { pendingDeletion != nil },
+            set: { if !$0 { pendingDeletion = nil } }
+        )
+    }
+
+    /// Names the time about to go, and where it goes from: a session's
+    /// deletion also takes its time back out of the task's running total.
+    ///
+    /// `clockTime`, not the task alert's `compactDuration`: a session is
+    /// minutes long, so dropping the seconds would both understate it and
+    /// disagree with the row it was clicked from.
+    private func deletionMessage(for recorded: RecordedSession) -> String {
+        let studied = recorded.session.seconds.formatted(.clockTime)
+        return "\(studied) studied against \"\(recorded.taskName)\" will be deleted, "
+            + "and taken back out of the task's total. This can't be undone."
     }
 
     @ViewBuilder
@@ -77,7 +106,7 @@ struct SessionHistoryView: View {
                 .frame(minWidth: 64, alignment: .trailing)
 
             Button {
-                tasks.removeSession(recorded.id)
+                pendingDeletion = recorded
             } label: {
                 Image(systemName: "trash")
             }
