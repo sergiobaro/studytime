@@ -46,18 +46,7 @@
                ReferencedContainer = "container:studytime.xcodeproj">
             </BuildableReference>
          </TestableReference>
-         <TestableReference
-            skipped = "NO"
-            parallelizable = "YES">
-            <BuildableReference
-               BuildableIdentifier = "primary"
-               BlueprintIdentifier = "D9C7EFF830445ED400E27173"
-               BuildableName = "studytimeUITests.xctest"
-               BlueprintName = "studytimeUITests"
-               ReferencedContainer = "container:studytime.xcodeproj">
-            </BuildableReference>
-         </TestableReference>
-      </Testables>
+         </Testables>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
