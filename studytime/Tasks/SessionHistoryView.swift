@@ -10,9 +10,26 @@ struct SessionHistoryView: View {
     /// The session the trash button asked about, kept until the alert is
     /// answered.
     @State private var pendingDeletion: RecordedSession?
+    /// `nil` shows every task.
+    @State private var filteredTaskID: StudyTask.ID?
 
     private var days: [SessionDay] {
-        SessionHistory.days(from: tasks.tasks)
+        SessionHistory.days(from: tasks.tasks, matching: filter.wrappedValue)
+    }
+
+    private var filterOptions: [StudyTask] {
+        SessionHistory.tasksWithSessions(in: tasks.tasks)
+    }
+
+    /// Normalised on the way out rather than reset with `onChange`: deleting
+    /// the filtered task's last session takes it out of the options, and a
+    /// selection naming a task that is no longer there would leave the menu
+    /// blank and the list empty.
+    private var filter: Binding<StudyTask.ID?> {
+        Binding(
+            get: { filterOptions.contains { $0.id == filteredTaskID } ? filteredTaskID : nil },
+            set: { filteredTaskID = $0 }
+        )
     }
 
     var body: some View {
@@ -20,8 +37,14 @@ struct SessionHistoryView: View {
             HStack(spacing: 8) {
                 SheetCloseButton()
 
-                Text("History")
+                Text("Sessions history")
                     .font(.headline)
+
+                // Nothing to narrow down until at least one session exists.
+                if !filterOptions.isEmpty {
+                    Spacer(minLength: 16)
+                    taskFilter
+                }
             }
 
             content
@@ -53,6 +76,19 @@ struct SessionHistoryView: View {
         let studied = recorded.session.seconds.formatted(.clockTime)
         return "\(studied) studied against \"\(recorded.taskName)\" will be deleted, "
             + "and taken back out of the task's total. This can't be undone."
+    }
+
+    private var taskFilter: some View {
+        Picker("Task", selection: filter) {
+            Text("All Tasks").tag(StudyTask.ID?.none)
+
+            ForEach(filterOptions) { task in
+                Text(task.name).tag(StudyTask.ID?.some(task.id))
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .fixedSize()
     }
 
     @ViewBuilder

@@ -82,6 +82,48 @@ struct SessionHistoryTests {
         #expect(days.first?.date == utcCalendar.startOfDay(for: start))
     }
 
+    @Test func filteringNarrowsTheHistoryToOneTask() {
+        let maths = StudyTask(name: "Maths", sessions: [session(day: 1, hour: 9, seconds: 600)])
+        let reading = StudyTask(name: "Reading", sessions: [session(day: 1, hour: 14, seconds: 900)])
+
+        let days = SessionHistory.days(from: [maths, reading], matching: reading.id, calendar: utcCalendar)
+
+        #expect(days.count == 1)
+        #expect(days.first?.sessions.map(\.taskName) == ["Reading"])
+        // The day total counts only the filtered task, not the 1500 of both.
+        #expect(days.first?.totalSeconds == 900)
+    }
+
+    @Test func filteringByATaskThatIsNotThereShowsNothing() {
+        let tasks = [StudyTask(name: "Maths", sessions: [session(day: 1, hour: 9, seconds: 600)])]
+
+        let days = SessionHistory.days(from: tasks, matching: UUID(), calendar: utcCalendar)
+
+        #expect(days.isEmpty)
+    }
+
+    @Test func notFilteringKeepsEveryTask() {
+        let tasks = [
+            StudyTask(name: "Maths", sessions: [session(day: 1, hour: 9, seconds: 600)]),
+            StudyTask(name: "Reading", sessions: [session(day: 1, hour: 14, seconds: 900)]),
+        ]
+
+        let days = SessionHistory.days(from: tasks, matching: nil, calendar: utcCalendar)
+
+        #expect(days.first?.sessions.count == 2)
+    }
+
+    @Test func onlyTasksWithSessionsAreWorthFiltering() {
+        let maths = StudyTask(name: "Maths", sessions: [session(day: 1, hour: 9, seconds: 600)])
+        // Studied time but no recorded sessions: stored before sessions existed.
+        let legacy = StudyTask(name: "German", studiedSeconds: 600)
+        let fresh = StudyTask(name: "Reading")
+
+        let options = SessionHistory.tasksWithSessions(in: [maths, legacy, fresh])
+
+        #expect(options.map(\.name) == ["Maths"])
+    }
+
     @Test func recentDaysAreNamedRatherThanDated() {
         let today = Date()
         let yesterday = today.addingTimeInterval(-24 * 3600)

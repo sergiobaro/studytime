@@ -31,8 +31,16 @@ enum SessionHistory {
     ///
     /// A session that runs past midnight belongs to the day it began on —
     /// splitting it would invent time that was never recorded as two runs.
-    static func days(from tasks: [StudyTask], calendar: Calendar = .current) -> [SessionDay] {
-        let recorded = tasks.flatMap { task in
+    ///
+    /// Passing a `taskID` narrows the history to that one task; the day
+    /// totals then count only its sessions, which is the point of filtering.
+    static func days(
+        from tasks: [StudyTask],
+        matching taskID: StudyTask.ID? = nil,
+        calendar: Calendar = .current
+    ) -> [SessionDay] {
+        let matched = taskID.map { id in tasks.filter { $0.id == id } } ?? tasks
+        let recorded = matched.flatMap { task in
             task.sessions.map { RecordedSession(taskName: task.name, session: $0) }
         }
 
@@ -44,6 +52,12 @@ enum SessionHistory {
                 )
             }
             .sorted { $0.date > $1.date }
+    }
+
+    /// The tasks a filter can usefully offer: one with no sessions would
+    /// only ever select an empty list.
+    static func tasksWithSessions(in tasks: [StudyTask]) -> [StudyTask] {
+        tasks.filter { !$0.sessions.isEmpty }
     }
 
     /// A day's heading: the recent days are named rather than dated, which is

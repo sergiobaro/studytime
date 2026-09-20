@@ -25,7 +25,7 @@ struct CornerToolbar: View {
 
             CornerIconButton(
                 systemImage: "clock.arrow.circlepath",
-                title: "History",
+                title: "Sessions history",
                 theme: theme,
                 isActive: isShowingHistory
             ) {
