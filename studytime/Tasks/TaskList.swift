@@ -135,6 +135,40 @@ extension TaskList {
         persist()
     }
 
+    /// Moves a recorded session onto another task, taking its time with it so
+    /// both totals still equal the sum of their sessions. Returns whether it
+    /// happened: an unknown session or task, or the task it is already on,
+    /// changes nothing.
+    @discardableResult
+    func moveSession(_ id: StudySession.ID, to taskID: StudyTask.ID) -> Bool {
+        guard let fromIndex = storedTasks.firstIndex(where: { task in
+            task.sessions.contains { $0.id == id }
+        }),
+        let toIndex = storedTasks.firstIndex(where: { $0.id == taskID }),
+        fromIndex != toIndex,
+        let sessionIndex = storedTasks[fromIndex].sessions.firstIndex(where: { $0.id == id })
+        else { return false }
+
+        let session = storedTasks[fromIndex].sessions.remove(at: sessionIndex)
+        storedTasks[fromIndex].studiedSeconds = max(
+            0,
+            storedTasks[fromIndex].studiedSeconds - session.seconds
+        )
+
+        // Sessions are kept oldest first.
+        let insertion = storedTasks[toIndex].sessions
+            .firstIndex { $0.startedAt > session.startedAt } ?? storedTasks[toIndex].sessions.endIndex
+        storedTasks[toIndex].sessions.insert(session, at: insertion)
+        storedTasks[toIndex].studiedSeconds += session.seconds
+
+        // The clock keeps counting against the selected task, so the run in
+        // progress can't follow its session elsewhere: the next second starts
+        // a fresh one.
+        if openSession?.sessionID == id { endSession() }
+        persist()
+        return true
+    }
+
     /// Closes the run being recorded, so the next second counted starts a new
     /// session. Called when the clock is finished or reset — pausing does not
     /// end a session, it just leaves a gap inside it.

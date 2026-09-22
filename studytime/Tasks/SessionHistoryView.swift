@@ -141,6 +141,8 @@ struct SessionHistoryView: View {
                 // A fixed column so the durations line up down the list.
                 .frame(minWidth: 64, alignment: .trailing)
 
+            moveMenu(for: recorded)
+
             Button {
                 pendingDeletion = recorded
             } label: {
@@ -150,6 +152,28 @@ struct SessionHistoryView: View {
             .help("Delete this session")
             .accessibilityLabel("Delete session on \(recorded.taskName)")
         }
+    }
+
+    /// Reassigns a session recorded against the wrong task. Offers every task
+    /// but its own, not just those with sessions: the right one may not have
+    /// any yet.
+    private func moveMenu(for recorded: RecordedSession) -> some View {
+        Menu {
+            ForEach(tasks.tasks.filter { $0.id != recorded.taskID }) { task in
+                Button(task.name) {
+                    tasks.moveSession(recorded.id, to: task.id)
+                }
+            }
+        } label: {
+            Image(systemName: "arrow.left.arrow.right")
+        }
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        // A task alone has nowhere to move its sessions to.
+        .disabled(tasks.tasks.count < 2)
+        .help("Move this session to another task")
+        .accessibilityLabel("Move session on \(recorded.taskName) to another task")
     }
 }
 

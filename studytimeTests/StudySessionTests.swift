@@ -166,6 +166,65 @@ struct StudySessionTests {
         #expect(tasks.selectedTask?.studiedSeconds == 10)
     }
 
+    @Test func movingASessionCarriesItsTimeToTheOtherTask() {
+        let maths = tasks.add(named: "Maths")!
+        study(seconds: 10)
+        let reading = tasks.add(named: "Reading")!
+        study(seconds: 4)
+        tasks.endSession()
+
+        let session = try! #require(tasks.tasks.first { $0.id == maths.id }?.sessions.first)
+        #expect(tasks.moveSession(session.id, to: reading.id))
+
+        let from = try! #require(tasks.tasks.first { $0.id == maths.id })
+        let to = try! #require(tasks.tasks.first { $0.id == reading.id })
+        #expect(from.sessions.isEmpty)
+        #expect(from.studiedSeconds == 0)
+        #expect(to.studiedSeconds == 14)
+        // Kept oldest first: the moved session began before Reading's own.
+        #expect(to.sessions.map(\.seconds) == [10, 4])
+    }
+
+    @Test func movingASessionOntoItsOwnTaskOrAnUnknownOneChangesNothing() {
+        let maths = tasks.add(named: "Maths")!
+        study(seconds: 10)
+        let session = try! #require(tasks.selectedTask?.sessions.first)
+
+        #expect(!tasks.moveSession(session.id, to: maths.id))
+        #expect(!tasks.moveSession(session.id, to: UUID()))
+        #expect(!tasks.moveSession(UUID(), to: maths.id))
+        #expect(tasks.selectedTask?.studiedSeconds == 10)
+        #expect(tasks.selectedTask?.sessions.count == 1)
+    }
+
+    @Test func movingTheRunInProgressEndsIt() {
+        let reading = tasks.add(named: "Reading")!
+        let maths = tasks.add(named: "Maths")!
+        study(seconds: 10)
+
+        let open = try! #require(tasks.sessionInProgress)
+        tasks.moveSession(open.id, to: reading.id)
+        #expect(tasks.sessionInProgress == nil)
+
+        // Further time stays with the selected task, in a fresh session.
+        study(seconds: 5)
+        let selected = try! #require(tasks.tasks.first { $0.id == maths.id })
+        #expect(selected.sessions.map(\.seconds) == [5])
+        #expect(tasks.tasks.first { $0.id == reading.id }?.studiedSeconds == 10)
+    }
+
+    @Test func aMovedSessionStaysMovedAfterRelaunch() {
+        let maths = tasks.add(named: "Maths")!
+        study(seconds: 10)
+        let reading = tasks.add(named: "Reading")!
+        let session = try! #require(tasks.tasks.first { $0.id == maths.id }?.sessions.first)
+        tasks.moveSession(session.id, to: reading.id)
+
+        let relaunched = TaskList(store: store)
+        #expect(relaunched.tasks.first { $0.id == reading.id }?.studiedSeconds == 10)
+        #expect(relaunched.tasks.first { $0.id == maths.id }?.sessions.isEmpty == true)
+    }
+
     @Test func aDeletedSessionStaysDeletedAfterRelaunch() {
         tasks.add(named: "Maths")
         study(seconds: 10)

@@ -3,6 +3,7 @@ import Foundation
 /// A session paired with the task it was recorded against, so sessions from
 /// different tasks can be listed together.
 struct RecordedSession: Identifiable, Hashable {
+    let taskID: StudyTask.ID
     let taskName: String
     let session: StudySession
 
@@ -41,7 +42,7 @@ enum SessionHistory {
     ) -> [SessionDay] {
         let matched = taskID.map { id in tasks.filter { $0.id == id } } ?? tasks
         let recorded = matched.flatMap { task in
-            task.sessions.map { RecordedSession(taskName: task.name, session: $0) }
+            task.sessions.map { RecordedSession(taskID: task.id, taskName: task.name, session: $0) }
         }
 
         return Dictionary(grouping: recorded) { calendar.startOfDay(for: $0.session.startedAt) }
