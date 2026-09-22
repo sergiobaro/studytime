@@ -1,19 +1,30 @@
 import SwiftUI
 
-/// The row of icons in the window's top-right corner: the calendar, the
-/// history, exporting and importing the tasks, and the appearance menu.
+/// The row of icons in the window's top-right corner: the task editor, the
+/// calendar, the history, exporting and importing the tasks, and the
+/// appearance menu.
 struct CornerToolbar: View {
     let tasks: TaskList
     @Binding var theme: BackgroundTheme
     /// Called after an import has replaced the tasks.
     var onRestore: () -> Void = {}
 
+    @State private var isEditingTasks = false
     @State private var isShowingCalendar = false
     @State private var isShowingHistory = false
     @State private var backupAction: TaskBackupAction?
 
     var body: some View {
         HStack(spacing: 2) {
+            CornerIconButton(
+                systemImage: "checklist",
+                title: "Edit Tasks",
+                theme: theme,
+                isActive: isEditingTasks
+            ) {
+                isEditingTasks = true
+            }
+
             CornerIconButton(
                 systemImage: "calendar",
                 title: "Calendar",
@@ -53,6 +64,9 @@ struct CornerToolbar: View {
             }
 
             AppearanceMenu(selection: $theme)
+        }
+        .sheet(isPresented: $isEditingTasks) {
+            TaskEditor(tasks: tasks)
         }
         .sheet(isPresented: $isShowingHistory) {
             SessionHistoryView(tasks: tasks)
