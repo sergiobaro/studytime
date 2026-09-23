@@ -273,6 +273,9 @@ private extension SessionCalendarView {
         let share = dayTotal > 0 ? Double(total.seconds) / Double(dayTotal) : 0
 
         return HStack {
+            TaskIconView(icon: total.taskIcon, color: total.taskColor)
+                .frame(width: 16)
+
             Text(total.taskName)
                 .lineLimit(1)
 
@@ -287,7 +290,7 @@ private extension SessionCalendarView {
         .background(alignment: .leading) {
             GeometryReader { proxy in
                 RoundedRectangle(cornerRadius: 5, style: .continuous)
-                    .fill(Color.accentColor.opacity(0.18))
+                    .fill(total.taskColor.color.opacity(0.22))
                     .frame(width: proxy.size.width * share)
             }
         }

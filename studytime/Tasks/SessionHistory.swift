@@ -5,6 +5,8 @@ import Foundation
 struct RecordedSession: Identifiable, Hashable {
     let taskID: StudyTask.ID
     let taskName: String
+    let taskIcon: TaskIcon
+    let taskColor: TaskColor
     let session: StudySession
 
     var id: StudySession.ID { session.id }
@@ -42,7 +44,15 @@ enum SessionHistory {
     ) -> [SessionDay] {
         let matched = taskID.map { id in tasks.filter { $0.id == id } } ?? tasks
         let recorded = matched.flatMap { task in
-            task.sessions.map { RecordedSession(taskID: task.id, taskName: task.name, session: $0) }
+            task.sessions.map {
+                RecordedSession(
+                    taskID: task.id,
+                    taskName: task.name,
+                    taskIcon: task.icon,
+                    taskColor: task.color,
+                    session: $0
+                )
+            }
         }
 
         return Dictionary(grouping: recorded) { calendar.startOfDay(for: $0.session.startedAt) }

@@ -80,6 +80,8 @@ struct TaskEditor: View {
             renameField(for: task)
         } else {
             HStack {
+                TaskStyleButton(task: task, tasks: tasks)
+
                 Text(task.name)
                     .lineLimit(1)
                     // Double-click is the list-rename idiom; the pencil is

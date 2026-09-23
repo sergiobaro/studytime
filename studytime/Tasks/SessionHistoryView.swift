@@ -80,10 +80,22 @@ struct SessionHistoryView: View {
 
     private var taskFilter: some View {
         Picker("Task", selection: filter) {
-            Text("All Tasks").tag(StudyTask.ID?.none)
+            Label {
+                Text("All Tasks")
+            } icon: {
+                Image.menuSymbol("square.stack")
+            }
+            .tag(StudyTask.ID?.none)
+
+            Divider()
 
             ForEach(filterOptions) { task in
-                Text(task.name).tag(StudyTask.ID?.some(task.id))
+                Label {
+                    Text(task.name)
+                } icon: {
+                    task.menuIcon
+                }
+                .tag(StudyTask.ID?.some(task.id))
             }
         }
         .labelsHidden()
@@ -127,6 +139,9 @@ struct SessionHistoryView: View {
 
     private func row(for recorded: RecordedSession) -> some View {
         HStack(spacing: 12) {
+            TaskIconView(icon: recorded.taskIcon, color: recorded.taskColor)
+                .frame(width: 16)
+
             Text(recorded.taskName)
                 .lineLimit(1)
 
@@ -160,8 +175,14 @@ struct SessionHistoryView: View {
     private func moveMenu(for recorded: RecordedSession) -> some View {
         Menu {
             ForEach(tasks.tasks.filter { $0.id != recorded.taskID }) { task in
-                Button(task.name) {
+                Button {
                     tasks.moveSession(recorded.id, to: task.id)
+                } label: {
+                    Label {
+                        Text(task.name)
+                    } icon: {
+                        task.menuIcon
+                    }
                 }
             }
         } label: {

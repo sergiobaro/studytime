@@ -3,6 +3,8 @@ import Foundation
 /// One task's share of a single day's study.
 struct TaskTotal: Identifiable, Hashable {
     let taskName: String
+    let taskIcon: TaskIcon
+    let taskColor: TaskColor
     let seconds: Int
 
     var id: String { taskName }
@@ -143,6 +145,8 @@ private extension SessionCalendar {
     /// Every task's seconds on every day that has any, keyed by midnight.
     static func totalsByDay(from tasks: [StudyTask], calendar: Calendar) -> [Date: [TaskTotal]] {
         var secondsByDay: [Date: [String: Int]] = [:]
+        // Names are unique, so they are enough to find a task's style again.
+        let tasksByName = Dictionary(tasks.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
 
         for task in tasks {
             for session in task.sessions {
@@ -153,7 +157,14 @@ private extension SessionCalendar {
 
         return secondsByDay.mapValues { seconds in
             seconds
-                .map { TaskTotal(taskName: $0.key, seconds: $0.value) }
+                .map { name, seconds in
+                    TaskTotal(
+                        taskName: name,
+                        taskIcon: tasksByName[name]?.icon ?? .default,
+                        taskColor: tasksByName[name]?.color ?? .blue,
+                        seconds: seconds
+                    )
+                }
                 // Longest first, and by name where two tasks tie, so the
                 // order does not shuffle between reads of the dictionary.
                 .sorted {

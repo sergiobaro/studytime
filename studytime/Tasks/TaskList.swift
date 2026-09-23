@@ -70,7 +70,7 @@ extension TaskList {
     func add(named name: String) -> StudyTask? {
         guard let name = Self.sanitised(name), !contains(named: name) else { return nil }
 
-        let task = StudyTask(name: name)
+        let task = StudyTask(name: name, color: TaskColor.next(after: storedTasks.map(\.color)))
         storedTasks.append(task)
         storedSelectionID = task.id
         persist()
@@ -100,6 +100,17 @@ extension TaskList {
         storedTasks[index].name = name
         persist()
         return true
+    }
+
+    /// Changes the icon and colour a task is drawn with.
+    func restyle(_ id: StudyTask.ID, icon: TaskIcon, color: TaskColor) {
+        guard let index = storedTasks.firstIndex(where: { $0.id == id }),
+              storedTasks[index].icon != icon || storedTasks[index].color != color
+        else { return }
+
+        storedTasks[index].icon = icon
+        storedTasks[index].color = color
+        persist()
     }
 
     /// Credits studied time to the selected task, and to the session it is

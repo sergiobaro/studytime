@@ -13,26 +13,31 @@ struct TaskPicker: View {
 
     var body: some View {
         Menu {
-            ForEach(tasks.tasks) { task in
-                Button {
-                    tasks.selectedTaskID = task.id
-                } label: {
-                    // A checkmark rather than a `Picker`, which would need the
-                    // optional selection modelled as a sentinel case.
-                    if task.id == tasks.selectedTaskID {
-                        Label("\(task.name) — \(task.studiedTime)", systemImage: "checkmark")
-                    } else {
-                        Text("\(task.name) — \(task.studiedTime)")
-                    }
-                }
-            }
-
             if !tasks.tasks.isEmpty {
-                Divider()
+                // Inline, so the tasks sit directly in this menu. A picker
+                // rather than toggles: the menu drops a toggle's icon, but
+                // keeps a picker item's alongside the checkmark.
+                Picker("Task", selection: selection) {
+                    ForEach(tasks.tasks) { task in
+                        Label {
+                            Text("\(task.name) — \(task.studiedTime)")
+                        } icon: {
+                            task.menuIcon
+                        }
+                        .tag(StudyTask.ID?.some(task.id))
+                    }
 
-                Button("No Task") {
-                    tasks.selectedTaskID = nil
+                    Divider()
+
+                    Label {
+                        Text("No Task")
+                    } icon: {
+                        Image.menuSymbol("circle.slash")
+                    }
+                    .tag(StudyTask.ID?.none)
                 }
+                .pickerStyle(.inline)
+                .labelsHidden()
             }
 
             Divider()
@@ -57,7 +62,11 @@ struct TaskPicker: View {
 
     private var label: some View {
         HStack(spacing: 6) {
-            Image(systemName: "checklist")
+            if let task = tasks.selectedTask {
+                TaskIconView(icon: task.icon, color: task.color)
+            } else {
+                Image(systemName: "checklist")
+            }
             Text(title)
                 .lineLimit(1)
                 .truncationMode(.tail)
@@ -82,6 +91,13 @@ struct TaskPicker: View {
                 .fill(theme.foreground.opacity(0.12))
         )
         .contentShape(Capsule(style: .continuous))
+    }
+
+    private var selection: Binding<StudyTask.ID?> {
+        Binding(
+            get: { tasks.selectedTaskID },
+            set: { tasks.selectedTaskID = $0 }
+        )
     }
 
     private var title: String {
