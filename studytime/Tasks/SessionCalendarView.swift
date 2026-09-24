@@ -7,6 +7,8 @@ import SwiftUI
 /// `SessionHistoryView`: it is its own sheet, not part of the timer window.
 struct SessionCalendarView: View {
     let tasks: TaskList
+    /// Supplies the colour days are shaded and selected in.
+    var theme: BackgroundTheme = .system
 
     @Environment(\.calendar) private var calendar
 
@@ -209,7 +211,7 @@ private extension SessionCalendarView {
     func fill(for day: CalendarDay, level: Int) -> Color {
         guard day.isInMonth else { return .clear }
         guard level > 0 else { return Color.secondary.opacity(0.08) }
-        return Color.accentColor.opacity([0, 0.22, 0.42, 0.66, 0.9][level])
+        return theme.highlight.opacity([0, 0.22, 0.42, 0.66, 0.9][level])
     }
 
     func foreground(for day: CalendarDay, level: Int) -> Color {
@@ -219,7 +221,7 @@ private extension SessionCalendarView {
     }
 
     func border(for day: CalendarDay) -> Color {
-        if isSelected(day) { return .accentColor }
+        if isSelected(day) { return theme.highlight }
         if isToday(day) && day.isInMonth { return Color.secondary.opacity(0.7) }
         return .clear
     }

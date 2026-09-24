@@ -113,6 +113,34 @@ enum BackgroundTheme: String, CaseIterable, Identifiable {
         self == .system ? .accentColor : foreground
     }
 
+    /// A mid-tone of the theme's own hue, for highlights in the sheets.
+    ///
+    /// The sheets keep the system appearance, where `accent` — the theme's
+    /// text colour — would be near-white or near-black and read as no colour
+    /// at all. A mid-tone shows on the light and dark system backgrounds
+    /// alike, and carries white text at full strength. `.system` defers to
+    /// the user's accent colour.
+    var highlight: Color {
+        switch self {
+        case .system: .accentColor
+        case .graphite: Color(red: 0.45, green: 0.47, blue: 0.52)
+        case .slate: Color(red: 0.36, green: 0.46, blue: 0.58)
+        case .midnight: Color(red: 0.33, green: 0.38, blue: 0.78)
+        case .ocean: Color(red: 0.13, green: 0.50, blue: 0.66)
+        case .forest: Color(red: 0.18, green: 0.55, blue: 0.40)
+        case .moss: Color(red: 0.40, green: 0.53, blue: 0.23)
+        case .plum: Color(red: 0.55, green: 0.33, blue: 0.65)
+        case .ember: Color(red: 0.80, green: 0.35, blue: 0.24)
+        case .espresso: Color(red: 0.58, green: 0.42, blue: 0.30)
+        case .paper: Color(red: 0.50, green: 0.49, blue: 0.46)
+        case .linen: Color(red: 0.60, green: 0.50, blue: 0.38)
+        case .sand: Color(red: 0.66, green: 0.52, blue: 0.30)
+        case .mist: Color(red: 0.36, green: 0.52, blue: 0.66)
+        case .sage: Color(red: 0.40, green: 0.57, blue: 0.43)
+        case .blush: Color(red: 0.76, green: 0.42, blue: 0.48)
+        }
+    }
+
     /// Text drawn on top of `accent`.
     var onAccent: Color {
         // `.system`'s background is `.clear`, which would be invisible here.

@@ -72,7 +72,7 @@ struct CornerToolbar: View {
             SessionHistoryView(tasks: tasks)
         }
         .sheet(isPresented: $isShowingCalendar) {
-            SessionCalendarView(tasks: tasks)
+            SessionCalendarView(tasks: tasks, theme: theme)
         }
         .taskBackupTransfer(tasks: tasks, action: $backupAction, onRestore: onRestore)
     }
