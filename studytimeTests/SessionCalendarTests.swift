@@ -189,3 +189,53 @@ struct SessionCalendarTests {
         #expect(SessionCalendar.title(forDay: today.addingTimeInterval(-24 * 3_600)) == "Yesterday")
     }
 }
+
+struct SessionCalendarYearTests {
+
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "UTC")!
+        calendar.locale = Locale(identifier: "en_GB")
+        calendar.firstWeekday = 2
+        return calendar
+    }
+
+    private func date(month: Int, day: Int, year: Int = 2026) -> Date {
+        DateComponents(calendar: calendar, timeZone: calendar.timeZone, year: year, month: month, day: day, hour: 9).date!
+    }
+
+    private func task(_ name: String, sessions: [(Date, Int)]) -> StudyTask {
+        var task = StudyTask(name: name)
+        task.sessions = sessions.map { StudySession(startedAt: $0, endedAt: $0.addingTimeInterval(Double($1)), seconds: $1) }
+        return task
+    }
+
+    @Test func aYearIsTwelveMonthsFromJanuary() {
+        let year = SessionCalendar.year(containing: date(month: 7, day: 14), from: [], calendar: calendar)
+
+        #expect(year.start == calendar.startOfDay(for: date(month: 1, day: 1)))
+        #expect(year.months.count == 12)
+        #expect(year.months.map { calendar.component(.month, from: $0.start) } == Array(1...12))
+        #expect(year.daysInYear.count == 365)
+    }
+
+    @Test func yearTotalsAddUpItsMonthsAndLeaveOutOtherYears() {
+        let maths = task("Maths", sessions: [
+            (date(month: 1, day: 5), 600),
+            (date(month: 1, day: 5), 300),
+            (date(month: 11, day: 20), 1_800),
+            (date(month: 12, day: 31, year: 2025), 3_600),
+        ])
+
+        let year = SessionCalendar.year(containing: date(month: 3, day: 1), from: [maths], calendar: calendar)
+
+        #expect(year.totalSeconds == 2_700)
+        #expect(year.studiedDayCount == 2)
+        #expect(year.busiestSeconds == 1_800)
+    }
+
+    @Test func theYearTitleIsTheYear() {
+        #expect(SessionCalendar.title(forYear: date(month: 5, day: 1), calendar: calendar) == "2026")
+        #expect(SessionCalendar.shortTitle(forMonth: date(month: 5, day: 1), calendar: calendar) == "May")
+    }
+}

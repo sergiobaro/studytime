@@ -1,4 +1,5 @@
 import Foundation
+import Synchronization
 
 /// One task's share of a single day's study.
 struct TaskTotal: Identifiable, Hashable {
@@ -58,6 +59,32 @@ struct CalendarMonth: Hashable {
     }
 }
 
+/// A year as its twelve months, for the year view.
+struct CalendarYear: Hashable {
+    /// Midnight on the first of January.
+    let start: Date
+    /// January to December, each laid out as its own grid.
+    let months: [CalendarMonth]
+
+    var daysInYear: [CalendarDay] {
+        months.flatMap(\.daysInMonth)
+    }
+
+    var totalSeconds: Int {
+        months.reduce(0) { $0 + $1.totalSeconds }
+    }
+
+    var studiedDayCount: Int {
+        months.reduce(0) { $0 + $1.studiedDayCount }
+    }
+
+    /// The busiest day of the whole year, so every month is shaded on the
+    /// same scale and a busy month looks busier than a quiet one.
+    var busiestSeconds: Int {
+        months.map(\.busiestSeconds).max() ?? 0
+    }
+}
+
 /// Arranges recorded sessions into months of days.
 ///
 /// The companion to `SessionHistory`: the same sessions, grouped for a grid
@@ -74,8 +101,50 @@ enum SessionCalendar {
         from tasks: [StudyTask],
         calendar: Calendar = .current
     ) -> CalendarMonth {
-        let start = monthStart(containing: date, calendar: calendar)
+        month(
+            startingOn: monthStart(containing: date, calendar: calendar),
+            totals: totalsByDay(from: tasks, calendar: calendar),
+            calendar: calendar
+        )
+    }
+
+    /// The year `date` falls in, month by month.
+    static func year(
+        containing date: Date,
+        from tasks: [StudyTask],
+        calendar: Calendar = .current
+    ) -> CalendarYear {
+        let start = yearStart(containing: date, calendar: calendar)
+        // Totalled once and shared, rather than once for every month.
         let totals = totalsByDay(from: tasks, calendar: calendar)
+        let months = (0..<12).compactMap { offset -> CalendarMonth? in
+            guard let first = calendar.date(byAdding: .month, value: offset, to: start) else { return nil }
+            return month(startingOn: first, totals: totals, calendar: calendar)
+        }
+        return CalendarYear(start: start, months: months)
+    }
+
+    /// Midnight on the first of January of the year `date` falls in.
+    static func yearStart(containing date: Date, calendar: Calendar = .current) -> Date {
+        let components = calendar.dateComponents([.year], from: date)
+        return calendar.date(from: components) ?? calendar.startOfDay(for: date)
+    }
+
+    /// `2026`, in the calendar's own locale.
+    static func title(forYear year: Date, calendar: Calendar = .current) -> String {
+        formatter(for: calendar, template: "y").string(from: year)
+    }
+
+    /// `March`, for a month's heading in the year view.
+    static func shortTitle(forMonth month: Date, calendar: Calendar = .current) -> String {
+        formatter(for: calendar, template: "MMMM").string(from: month)
+    }
+
+    private static func month(
+        startingOn start: Date,
+        totals: [Date: [TaskTotal]],
+        calendar: Calendar
+    ) -> CalendarMonth {
         let dayCount = calendar.range(of: .day, in: .month, for: start)?.count ?? 0
 
         // The grid opens on the first weekday of the week the 1st falls in,
@@ -175,12 +244,29 @@ private extension SessionCalendar {
 
     /// Formats against the given calendar rather than the current one, so a
     /// caller passing a fixed calendar gets fixed output.
+    ///
+    /// Kept once made: building one from a template is slow enough that the
+    /// year view, labelling every day, stalled on it.
     static func formatter(for calendar: Calendar, template: String) -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.calendar = calendar
-        formatter.timeZone = calendar.timeZone
-        formatter.locale = calendar.locale ?? .current
-        formatter.setLocalizedDateFormatFromTemplate(template)
-        return formatter
+        let key = FormatterKey(calendar: calendar, template: template)
+        return formatters.withLock { formatters in
+            if let formatter = formatters[key] { return formatter }
+
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.timeZone = calendar.timeZone
+            formatter.locale = calendar.locale ?? .current
+            formatter.setLocalizedDateFormatFromTemplate(template)
+            formatters[key] = formatter
+            return formatter
+        }
     }
 }
+
+private struct FormatterKey: Hashable {
+    let calendar: Calendar
+    let template: String
+}
+
+/// Shared across threads, as the tests format in parallel.
+private let formatters = Mutex<[FormatterKey: DateFormatter]>([:])

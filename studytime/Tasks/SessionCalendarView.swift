@@ -1,7 +1,7 @@
 import SwiftUI
 
-/// A month at a time: how much was studied on each day, and — for the day
-/// picked out — which tasks that time went to.
+/// A month or a whole year at a time: how much was studied on each day, and —
+/// for the day picked out — which tasks that time went to.
 ///
 /// Left in the system appearance for the same reason as `TaskEditor` and
 /// `SessionHistoryView`: it is its own sheet, not part of the timer window.
@@ -12,7 +12,9 @@ struct SessionCalendarView: View {
 
     @Environment(\.calendar) private var calendar
 
-    /// The first of the month on show.
+    @State private var scope = CalendarScope.month
+    /// The first of the month on show — or, in the year view, of a month in
+    /// the year on show.
     @State private var visibleMonth = SessionCalendar.monthStart(containing: .now)
     /// Midnight of the day whose breakdown is listed, if one is picked.
     @State private var selectedDay: Date?
@@ -25,35 +27,112 @@ struct SessionCalendarView: View {
         SessionCalendar.month(containing: visibleMonth, from: tasks.tasks, calendar: calendar)
     }
 
+    private var year: CalendarYear {
+        SessionCalendar.year(containing: visibleMonth, from: tasks.tasks, calendar: calendar)
+    }
+
+    /// Every day on show that can be selected.
+    private var visibleDays: [CalendarDay] {
+        switch scope {
+        case .month: month.daysInMonth
+        case .year: year.daysInYear
+        }
+    }
+
     var body: some View {
-        let month = self.month
+        // Built once per update and shared, rather than once for the grid
+        // and again for the breakdown.
+        let month = scope == .month ? self.month : nil
+        let year = scope == .year ? self.year : nil
 
         return VStack(alignment: .leading, spacing: 14) {
             header
 
-            // The picked day's tasks sit beside the month rather than under
+            // The picked day's tasks sit beside the grid rather than under
             // it, so the grid keeps its height and the list its own column.
             HStack(alignment: .top, spacing: 16) {
-                VStack(alignment: .leading, spacing: 14) {
-                    weekdayHeader
-
-                    grid(for: month)
-
-                    Text(summary(of: month))
-                        .font(.callout)
-                        .foregroundStyle(.secondary)
+                // The same column for both, so the divider and the
+                // breakdown stay put when switching between them.
+                Group {
+                    if let month {
+                        monthView(month)
+                    } else if let year {
+                        yearView(year)
+                    }
                 }
-                .frame(minWidth: 420)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
 
                 Divider()
 
-                breakdown(in: month)
+                breakdown(in: month?.daysInMonth ?? year?.daysInYear ?? [])
                     .frame(width: 240)
             }
         }
         .padding()
-        .frame(minWidth: 720, minHeight: 420)
+        // A fixed width rather than one fitted to the content: the month and
+        // year grids want different widths, and the sheet would otherwise
+        // resize — shifting everything in it — on every switch.
+        .frame(width: 720)
+        .frame(minHeight: 420)
         .onAppear(perform: selectTodayIfStudied)
+        .onChange(of: scope) { _, scope in
+            // Narrowing a year to a month opens on the month of the day
+            // picked in it, so the pick stays on show.
+            if scope == .month, let selectedDay, !calendar.isDate(selectedDay, equalTo: visibleMonth, toGranularity: .month) {
+                visibleMonth = SessionCalendar.monthStart(containing: selectedDay, calendar: calendar)
+            }
+            if !visibleDays.contains(where: { $0.date == selectedDay }) { selectedDay = nil }
+            selectTodayIfStudied()
+        }
+    }
+
+    private func monthView(_ month: CalendarMonth) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            weekdayHeader
+
+            grid(for: month)
+
+            Text(summary(seconds: month.totalSeconds, days: month.studiedDayCount))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// An arrow for stepping between months or years, with a full square to
+/// click rather than just the chevron — a borderless button only responds
+/// where its label draws — and a chip under the pointer to show it.
+private struct StepArrowLabel: View {
+    let systemImage: String
+
+    @State private var isHovered = false
+    @Environment(\.isEnabled) private var isEnabled
+
+    var body: some View {
+        Image(systemName: systemImage)
+            .font(.system(size: 13, weight: .semibold))
+            .frame(width: 28, height: 28)
+            .background(
+                Circle().fill(Color.secondary.opacity(isHovered && isEnabled ? 0.15 : 0))
+            )
+            .contentShape(Rectangle())
+            .onHover { isHovered = $0 }
+            .animation(.easeInOut(duration: 0.12), value: isHovered)
+    }
+}
+
+/// Whether the calendar shows one month or a whole year.
+enum CalendarScope: String, CaseIterable, Identifiable {
+    case month
+    case year
+
+    var id: Self { self }
+
+    var title: String {
+        switch self {
+        case .month: "Month"
+        case .year: "Year"
+        }
     }
 }
 
@@ -70,42 +149,73 @@ private extension SessionCalendarView {
 
             Spacer()
 
-            Button { step(by: -1) } label: {
-                Image(systemName: "chevron.left")
+            Picker("View", selection: $scope) {
+                ForEach(CalendarScope.allCases) { scope in
+                    Text(scope.title).tag(scope)
+                }
             }
-            .help("Previous month")
-            .accessibilityLabel("Previous month")
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .fixedSize()
 
-            Text(SessionCalendar.title(forMonth: visibleMonth, calendar: calendar))
+            Spacer()
+
+            Button { step(by: -1) } label: {
+                StepArrowLabel(systemImage: "chevron.left")
+            }
+            .help("Previous \(scope.rawValue)")
+            .accessibilityLabel("Previous \(scope.rawValue)")
+
+            Text(visibleTitle)
                 .font(.headline)
                 // A fixed slot, so the arrows do not shuffle as the month
                 // name changes length.
                 .frame(minWidth: 150)
 
             Button { step(by: 1) } label: {
-                Image(systemName: "chevron.right")
+                StepArrowLabel(systemImage: "chevron.right")
             }
-            .help("Next month")
-            .accessibilityLabel("Next month")
+            .help("Next \(scope.rawValue)")
+            .accessibilityLabel("Next \(scope.rawValue)")
             // Nothing can have been studied in a month that has not started.
             .disabled(!canStepForward)
 
             Button("Today") {
-                visibleMonth = SessionCalendar.monthStart(containing: today, calendar: calendar)
+                visibleMonth = currentMonth
+                selectedDay = nil
                 selectTodayIfStudied()
             }
-            .disabled(calendar.isDate(visibleMonth, equalTo: today, toGranularity: .month))
+            .disabled(calendar.isDate(visibleMonth, equalTo: today, toGranularity: granularity))
         }
         .buttonStyle(.borderless)
     }
 
-    var canStepForward: Bool {
-        visibleMonth < SessionCalendar.monthStart(containing: today, calendar: calendar)
+    var visibleTitle: String {
+        switch scope {
+        case .month: SessionCalendar.title(forMonth: visibleMonth, calendar: calendar)
+        case .year: SessionCalendar.title(forYear: visibleMonth, calendar: calendar)
+        }
     }
 
-    func step(by months: Int) {
-        visibleMonth = SessionCalendar.month(offsetBy: months, from: visibleMonth, calendar: calendar)
-        // The selection belongs to the month it was made in.
+    var granularity: Calendar.Component {
+        scope == .month ? .month : .year
+    }
+
+    var currentMonth: Date {
+        SessionCalendar.monthStart(containing: today, calendar: calendar)
+    }
+
+    var canStepForward: Bool {
+        !calendar.isDate(visibleMonth, equalTo: today, toGranularity: granularity)
+            && visibleMonth < currentMonth
+    }
+
+    func step(by steps: Int) {
+        let months = scope == .month ? steps : steps * 12
+        let stepped = SessionCalendar.month(offsetBy: months, from: visibleMonth, calendar: calendar)
+        // A year on from a late month can overshoot this one; stop at today.
+        visibleMonth = min(stepped, currentMonth)
+        // The selection belongs to the month or year it was made in.
         selectedDay = nil
         selectTodayIfStudied()
     }
@@ -114,8 +224,8 @@ private extension SessionCalendarView {
     /// useful before anything is clicked.
     func selectTodayIfStudied() {
         let midnight = calendar.startOfDay(for: today)
-        guard calendar.isDate(midnight, equalTo: visibleMonth, toGranularity: .month),
-              month.daysInMonth.contains(where: { $0.date == midnight && $0.hasStudy })
+        guard selectedDay == nil,
+              visibleDays.contains(where: { $0.date == midnight && $0.hasStudy })
         else { return }
 
         selectedDay = midnight
@@ -152,7 +262,7 @@ private extension SessionCalendarView {
     }
 
     func cell(for day: CalendarDay, busiest: Int) -> some View {
-        let level = shadingLevel(for: day, busiest: busiest)
+        let level = Self.shadingLevel(for: day, busiest: busiest)
 
         return Button {
             // Only a day of the month on show, and only one with something
@@ -202,16 +312,20 @@ private extension SessionCalendarView {
     /// 0 for a day with nothing on it, then 1–4 by how the day compares with
     /// the busiest one in the month — the shading is relative, so a quiet
     /// month still reads as a range rather than as one flat block.
-    func shadingLevel(for day: CalendarDay, busiest: Int) -> Int {
+    static func shadingLevel(for day: CalendarDay, busiest: Int) -> Int {
         guard day.hasStudy, busiest > 0 else { return 0 }
         let ratio = Double(day.totalSeconds) / Double(busiest)
         return min(4, max(1, Int((ratio * 4).rounded(.up))))
     }
 
     func fill(for day: CalendarDay, level: Int) -> Color {
+        Self.fill(for: day, level: level, highlight: theme.highlight)
+    }
+
+    static func fill(for day: CalendarDay, level: Int, highlight: Color) -> Color {
         guard day.isInMonth else { return .clear }
         guard level > 0 else { return Color.secondary.opacity(0.08) }
-        return theme.highlight.opacity([0, 0.22, 0.42, 0.66, 0.9][level])
+        return highlight.opacity([0, 0.22, 0.42, 0.66, 0.9][level])
     }
 
     func foreground(for day: CalendarDay, level: Int) -> Color {
@@ -227,9 +341,153 @@ private extension SessionCalendarView {
     }
 
     func accessibilityLabel(for day: CalendarDay) -> String {
+        Self.accessibilityLabel(for: day, calendar: calendar)
+    }
+
+    static func accessibilityLabel(for day: CalendarDay, calendar: Calendar) -> String {
         let title = SessionCalendar.title(forDay: day.date, calendar: calendar)
         guard day.hasStudy else { return "\(title), nothing studied" }
         return "\(title), \(day.totalSeconds.formatted(.compactDuration)) studied"
+    }
+}
+
+// MARK: - Year
+
+private extension SessionCalendarView {
+
+    func yearView(_ year: CalendarYear) -> some View {
+        let midnight = calendar.startOfDay(for: today)
+
+        return VStack(alignment: .leading, spacing: 14) {
+            LazyVGrid(
+                columns: Array(
+                    repeating: GridItem(.fixed(MiniMonthView.width), spacing: 12, alignment: .top),
+                    count: 4
+                ),
+                alignment: .leading,
+                spacing: 14
+            ) {
+                ForEach(year.months, id: \.start) { month in
+                    MiniMonthView(
+                        month: month,
+                        busiest: year.busiestSeconds,
+                        selectedDay: selectedDay.flatMap { day in
+                            calendar.isDate(day, equalTo: month.start, toGranularity: .month) ? day : nil
+                        },
+                        today: midnight,
+                        highlight: theme.highlight,
+                        calendar: calendar,
+                        onSelect: { selectedDay = $0 },
+                        onOpen: {
+                            visibleMonth = month.start
+                            scope = .month
+                        }
+                    )
+                    .equatable()
+                }
+            }
+
+            Text(summary(seconds: year.totalSeconds, days: year.studiedDayCount))
+                .font(.callout)
+                .foregroundStyle(.secondary)
+        }
+    }
+}
+
+/// A month of the year view: a block of small squares, headed by its name —
+/// which opens the month on its own.
+///
+/// Its own view, compared by value, so an update redraws only the months that
+/// changed: the timer ticking every second touches today's month alone, and
+/// picking a day only the months it moves between.
+private struct MiniMonthView: View, Equatable {
+    let month: CalendarMonth
+    let busiest: Int
+    /// Only when it falls in this month, so a pick elsewhere leaves it alone.
+    let selectedDay: Date?
+    /// Midnight today.
+    let today: Date
+    let highlight: Color
+    let calendar: Calendar
+    let onSelect: (Date) -> Void
+    let onOpen: () -> Void
+
+    private static let cellSize: CGFloat = 11
+    private static let spacing: CGFloat = 2
+    static let width = cellSize * 7 + spacing * 6
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.month == rhs.month
+            && lhs.busiest == rhs.busiest
+            && lhs.selectedDay == rhs.selectedDay
+            && lhs.today == rhs.today
+            && lhs.highlight == rhs.highlight
+            && lhs.calendar == rhs.calendar
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 5) {
+            Button(action: onOpen) {
+                Text(SessionCalendar.shortTitle(forMonth: month.start, calendar: calendar))
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(isCurrentMonth ? highlight : .primary)
+            }
+            .buttonStyle(.plain)
+            .help("Show \(SessionCalendar.title(forMonth: month.start, calendar: calendar))")
+
+            VStack(spacing: Self.spacing) {
+                ForEach(month.weeks, id: \.self) { week in
+                    HStack(spacing: Self.spacing) {
+                        ForEach(week) { day in
+                            cell(for: day)
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private var isCurrentMonth: Bool {
+        calendar.isDate(month.start, equalTo: today, toGranularity: .month)
+    }
+
+    /// Only a studied day is a button: the rest have nothing to show, and
+    /// hundreds of buttons, each with a tooltip, were slow to lay out.
+    @ViewBuilder
+    private func cell(for day: CalendarDay) -> some View {
+        let square = square(for: day)
+
+        if day.isInMonth && day.hasStudy {
+            let label = SessionCalendarView.accessibilityLabel(for: day, calendar: calendar)
+            Button { onSelect(day.date) } label: { square }
+                .buttonStyle(.plain)
+                .help(label)
+                .accessibilityLabel(label)
+        } else if day.isInMonth {
+            square
+                .accessibilityLabel(SessionCalendarView.accessibilityLabel(for: day, calendar: calendar))
+        } else {
+            square.accessibilityHidden(true)
+        }
+    }
+
+    private func square(for day: CalendarDay) -> some View {
+        let level = SessionCalendarView.shadingLevel(for: day, busiest: busiest)
+        let isSelected = day.isInMonth && day.date == selectedDay
+
+        return RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+            .fill(SessionCalendarView.fill(for: day, level: level, highlight: highlight))
+            .overlay(
+                RoundedRectangle(cornerRadius: 2.5, style: .continuous)
+                    .strokeBorder(border(for: day, isSelected: isSelected), lineWidth: isSelected ? 1.5 : 1)
+            )
+            .frame(width: Self.cellSize, height: Self.cellSize)
+    }
+
+    private func border(for day: CalendarDay, isSelected: Bool) -> Color {
+        if isSelected { return highlight }
+        if day.isInMonth && day.date == today { return Color.secondary.opacity(0.7) }
+        return .clear
     }
 }
 
@@ -238,8 +496,8 @@ private extension SessionCalendarView {
 private extension SessionCalendarView {
 
     @ViewBuilder
-    func breakdown(in month: CalendarMonth) -> some View {
-        let day = month.daysInMonth.first { $0.date == selectedDay }
+    func breakdown(in days: [CalendarDay]) -> some View {
+        let day = days.first { $0.date == selectedDay }
 
         VStack(alignment: .leading, spacing: 8) {
             if let day {
@@ -262,7 +520,7 @@ private extension SessionCalendarView {
                     }
                 }
             } else {
-                Text(placeholder(for: month))
+                Text(placeholder(hasStudy: days.contains(where: \.hasStudy)))
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
@@ -303,16 +561,16 @@ private extension SessionCalendarView {
         .accessibilityElement(children: .combine)
     }
 
-    func placeholder(for month: CalendarMonth) -> String {
-        month.studiedDayCount == 0
-            ? "Nothing studied this month."
-            : "Pick a day to see which tasks its time went to."
+    func placeholder(hasStudy: Bool) -> String {
+        hasStudy
+            ? "Pick a day to see which tasks its time went to."
+            : "Nothing studied this \(scope.rawValue)."
     }
 
-    func summary(of month: CalendarMonth) -> String {
-        guard month.studiedDayCount > 0 else { return "No study recorded" }
-        let days = month.studiedDayCount == 1 ? "1 day" : "\(month.studiedDayCount) days"
-        return "\(month.totalSeconds.formatted(.clockTime)) across \(days)"
+    func summary(seconds: Int, days: Int) -> String {
+        guard days > 0 else { return "No study recorded" }
+        let dayCount = days == 1 ? "1 day" : "\(days) days"
+        return "\(seconds.formatted(.clockTime)) across \(dayCount)"
     }
 }
 
