@@ -19,6 +19,18 @@ enum TaskIcon: String, CaseIterable, Identifiable, Codable {
     case brain
     case leaf
     case star
+    case history
+    case code
+    case chart
+    case atom
+    case stethoscope
+    case ruler
+    case graduation
+    case lightbulb
+    case heart
+    case dumbbell
+    case camera
+    case theatre
 
     static let `default`: TaskIcon = .book
 
@@ -38,6 +50,18 @@ enum TaskIcon: String, CaseIterable, Identifiable, Codable {
         case .brain: "brain.head.profile"
         case .leaf: "leaf.fill"
         case .star: "star.fill"
+        case .history: "building.columns.fill"
+        case .code: "chevron.left.forwardslash.chevron.right"
+        case .chart: "chart.bar.fill"
+        case .atom: "atom"
+        case .stethoscope: "stethoscope"
+        case .ruler: "ruler.fill"
+        case .graduation: "graduationcap.fill"
+        case .lightbulb: "lightbulb.fill"
+        case .heart: "heart.fill"
+        case .dumbbell: "dumbbell.fill"
+        case .camera: "camera.fill"
+        case .theatre: "theatermasks.fill"
         }
     }
 
@@ -55,6 +79,18 @@ enum TaskIcon: String, CaseIterable, Identifiable, Codable {
         case .brain: "Thinking"
         case .leaf: "Nature"
         case .star: "Star"
+        case .history: "History"
+        case .code: "Code"
+        case .chart: "Statistics"
+        case .atom: "Physics"
+        case .stethoscope: "Medicine"
+        case .ruler: "Geometry"
+        case .graduation: "Exams"
+        case .lightbulb: "Ideas"
+        case .heart: "Health"
+        case .dumbbell: "Sport"
+        case .camera: "Photography"
+        case .theatre: "Drama"
         }
     }
 
@@ -68,8 +104,11 @@ enum TaskIcon: String, CaseIterable, Identifiable, Codable {
 
 /// The colour a task's icon is drawn in.
 ///
-/// Mid-tone system colours, so the icon reads on the light and dark themes
-/// alike and on the system sheets.
+/// Mid-tone colours, so the icon reads on the light and dark themes alike and
+/// on the system sheets. System colours where there is one; the rest are fixed
+/// mid-tones picked to stay apart from them.
+///
+/// New colours go at the end: `next(after:)` hands out colours in this order.
 enum TaskColor: String, CaseIterable, Identifiable, Codable {
     case blue
     case green
@@ -81,6 +120,14 @@ enum TaskColor: String, CaseIterable, Identifiable, Codable {
     case yellow
     case indigo
     case brown
+    case mint
+    case cyan
+    case gray
+    case lime
+    case crimson
+    case magenta
+    case lavender
+    case olive
 
     var id: String { rawValue }
 
@@ -96,6 +143,14 @@ enum TaskColor: String, CaseIterable, Identifiable, Codable {
         case .yellow: .yellow
         case .indigo: .indigo
         case .brown: .brown
+        case .mint: .mint
+        case .cyan: .cyan
+        case .gray: .gray
+        case .lime: Color(red: 0.55, green: 0.78, blue: 0.18)
+        case .crimson: Color(red: 0.75, green: 0.13, blue: 0.27)
+        case .magenta: Color(red: 0.85, green: 0.22, blue: 0.75)
+        case .lavender: Color(red: 0.65, green: 0.56, blue: 0.95)
+        case .olive: Color(red: 0.56, green: 0.56, blue: 0.22)
         }
     }
 
