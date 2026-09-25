@@ -66,14 +66,17 @@ struct ContentView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(appearance.theme.background.ignoresSafeArea())
+        .background(
+            WindowBackground(theme: appearance.theme, image: appearance.backgroundImage)
+                .ignoresSafeArea()
+        )
         .foregroundStyle(appearance.theme.foreground)
         // Anchored to the window rather than the stack, and on the trailing
         // side so it stays clear of the traffic lights. The hidden title bar
         // still reserves a safe area at the top, which the overlay reaches
         // into so the buttons sit in the corner rather than below it.
         .overlay(alignment: .topTrailing) {
-            CornerToolbar(tasks: tasks, theme: $appearance.theme) {
+            CornerToolbar(tasks: tasks, appearance: appearance) {
                 // The imported tasks replace the one the clock was counting for.
                 studyTimer.reset()
             }

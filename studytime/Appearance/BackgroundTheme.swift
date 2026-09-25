@@ -147,6 +147,18 @@ enum BackgroundTheme: String, CaseIterable, Identifiable {
         self == .system ? .white : background
     }
 
+    /// Laid over a background image so the clock stays readable on any
+    /// photo: the image is tinted towards the colour `foreground` was paired
+    /// with. `.system` uses the window colour, which follows light and dark
+    /// mode just as its `.primary` text does.
+    var imageScrim: Color {
+        self == .system ? Color(nsColor: .windowBackgroundColor) : background
+    }
+
+    /// How strongly `imageScrim` covers the image: enough to keep the text
+    /// legible, while leaving the picture recognisable.
+    static let imageScrimOpacity = 0.6
+
     /// What the swatch shows. `.system`'s `.clear` background would be an
     /// invisible dot, so it gets a neutral stand-in.
     var swatch: Color {

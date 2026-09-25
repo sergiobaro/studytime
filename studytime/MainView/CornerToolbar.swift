@@ -5,7 +5,7 @@ import SwiftUI
 /// appearance menu.
 struct CornerToolbar: View {
     let tasks: TaskList
-    @Binding var theme: BackgroundTheme
+    let appearance: AppearanceSettings
     /// Called after an import has replaced the tasks.
     var onRestore: () -> Void = {}
 
@@ -13,6 +13,8 @@ struct CornerToolbar: View {
     @State private var isShowingCalendar = false
     @State private var isShowingHistory = false
     @State private var backupAction: TaskBackupAction?
+
+    private var theme: BackgroundTheme { appearance.theme }
 
     var body: some View {
         HStack(spacing: 2) {
@@ -63,7 +65,7 @@ struct CornerToolbar: View {
                 backupAction = .import
             }
 
-            AppearanceMenu(selection: $theme)
+            AppearanceMenu(appearance: appearance)
         }
         .sheet(isPresented: $isEditingTasks) {
             TaskEditor(tasks: tasks)
