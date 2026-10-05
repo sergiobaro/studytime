@@ -225,6 +225,51 @@ struct StudySessionTests {
         #expect(relaunched.tasks.first { $0.id == maths.id }?.sessions.isEmpty == true)
     }
 
+    @Test func anAddedSessionCountsTowardsTheTotal() {
+        let maths = tasks.add(named: "Maths")!
+        let start = clock.now.addingTimeInterval(-7200)
+
+        let session = try! #require(tasks.addSession(to: maths.id, startedAt: start, seconds: 1800))
+
+        #expect(session.startedAt == start)
+        #expect(session.endedAt == start.addingTimeInterval(1800))
+        #expect(tasks.selectedTask?.studiedSeconds == 1800)
+        #expect(tasks.selectedTask?.sessions == [session])
+    }
+
+    @Test func anAddedSessionIsKeptInOrderAndDoesNotTouchTheRunInProgress() {
+        let maths = tasks.add(named: "Maths")!
+        study(seconds: 10)
+        let open = try! #require(tasks.sessionInProgress)
+
+        let earlier = tasks.addSession(to: maths.id, startedAt: clock.now.addingTimeInterval(-3600), seconds: 60)
+
+        #expect(tasks.selectedTask?.sessions.map(\.id) == [earlier?.id, open.id])
+        // The clock keeps extending the run it was already counting.
+        study(seconds: 5)
+        #expect(tasks.sessionInProgress?.seconds == 15)
+        #expect(tasks.selectedTask?.studiedSeconds == 75)
+    }
+
+    @Test func addingASessionToAnUnknownTaskOrWithNoTimeChangesNothing() {
+        let maths = tasks.add(named: "Maths")!
+
+        #expect(tasks.addSession(to: UUID(), startedAt: clock.now, seconds: 60) == nil)
+        #expect(tasks.addSession(to: maths.id, startedAt: clock.now, seconds: 0) == nil)
+        #expect(tasks.addSession(to: maths.id, startedAt: clock.now, seconds: -60) == nil)
+        #expect(tasks.selectedTask?.sessions.isEmpty == true)
+        #expect(tasks.selectedTask?.studiedSeconds == 0)
+    }
+
+    @Test func anAddedSessionSurvivesRelaunch() {
+        let maths = tasks.add(named: "Maths")!
+        tasks.addSession(to: maths.id, startedAt: clock.now, seconds: 900)
+
+        let relaunched = TaskList(store: store)
+        #expect(relaunched.selectedTask?.sessions.map(\.seconds) == [900])
+        #expect(relaunched.selectedTask?.studiedSeconds == 900)
+    }
+
     @Test func aDeletedSessionStaysDeletedAfterRelaunch() {
         tasks.add(named: "Maths")
         study(seconds: 10)

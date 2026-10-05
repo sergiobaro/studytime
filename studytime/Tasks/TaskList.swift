@@ -166,11 +166,7 @@ extension TaskList {
             storedTasks[fromIndex].studiedSeconds - session.seconds
         )
 
-        // Sessions are kept oldest first.
-        let insertion = storedTasks[toIndex].sessions
-            .firstIndex { $0.startedAt > session.startedAt } ?? storedTasks[toIndex].sessions.endIndex
-        storedTasks[toIndex].sessions.insert(session, at: insertion)
-        storedTasks[toIndex].studiedSeconds += session.seconds
+        insert(session, into: toIndex)
 
         // The clock keeps counting against the selected task, so the run in
         // progress can't follow its session elsewhere: the next second starts
@@ -178,6 +174,29 @@ extension TaskList {
         if openSession?.sessionID == id { endSession() }
         persist()
         return true
+    }
+
+    /// Records a session typed in by hand — time studied away from the
+    /// timer — and adds it to the task's total. Returns the session, or `nil`
+    /// — changing nothing — for an unknown task or a duration that isn't
+    /// positive.
+    ///
+    /// The session counts every second of its span: there is no pause inside
+    /// a run that was never timed.
+    @discardableResult
+    func addSession(to taskID: StudyTask.ID, startedAt: Date, seconds: Int) -> StudySession? {
+        guard seconds > 0,
+              let index = storedTasks.firstIndex(where: { $0.id == taskID })
+        else { return nil }
+
+        let session = StudySession(
+            startedAt: startedAt,
+            endedAt: startedAt.addingTimeInterval(Double(seconds)),
+            seconds: seconds
+        )
+        insert(session, into: index)
+        persist()
+        return session
     }
 
     /// Closes the run being recorded, so the next second counted starts a new
@@ -264,6 +283,15 @@ private extension TaskList {
         )
         storedTasks[index].sessions.append(session)
         openSession = (taskID: task.id, sessionID: session.id)
+    }
+
+    /// Adds a session to a task's history and total, keeping the history
+    /// oldest first.
+    func insert(_ session: StudySession, into index: Int) {
+        let insertion = storedTasks[index].sessions
+            .firstIndex { $0.startedAt > session.startedAt } ?? storedTasks[index].sessions.endIndex
+        storedTasks[index].sessions.insert(session, at: insertion)
+        storedTasks[index].studiedSeconds += session.seconds
     }
 
     func persist() {

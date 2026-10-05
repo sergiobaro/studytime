@@ -94,6 +94,8 @@ struct TaskEditor: View {
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
 
+                AddSessionButton(task: task, tasks: tasks)
+
                 Button {
                     beginRename(task)
                 } label: {
