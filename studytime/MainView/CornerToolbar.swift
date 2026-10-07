@@ -1,8 +1,8 @@
 import SwiftUI
 
 /// The row of icons in the window's top-right corner: the task editor, the
-/// calendar, the history, exporting and importing the tasks, and the
-/// appearance menu.
+/// calendar, the history, exporting and importing the tasks, the appearance
+/// menu, and pinning the window above other windows.
 struct CornerToolbar: View {
     let tasks: TaskList
     let appearance: AppearanceSettings
@@ -13,6 +13,7 @@ struct CornerToolbar: View {
     @State private var isShowingCalendar = false
     @State private var isShowingHistory = false
     @State private var backupAction: TaskBackupAction?
+    @State private var isPinned = false
 
     private var theme: BackgroundTheme { appearance.theme }
 
@@ -66,7 +67,17 @@ struct CornerToolbar: View {
             }
 
             AppearanceMenu(appearance: appearance)
+
+            CornerIconButton(
+                systemImage: isPinned ? "pin.fill" : "pin",
+                title: isPinned ? "Unpin Window" : "Keep Window on Top",
+                theme: theme,
+                isActive: isPinned
+            ) {
+                isPinned.toggle()
+            }
         }
+        .windowFloating(isPinned)
         .sheet(isPresented: $isEditingTasks) {
             TaskEditor(tasks: tasks)
         }
