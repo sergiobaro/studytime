@@ -18,17 +18,37 @@ struct SessionCalendarView: View {
     @State private var visibleMonth = SessionCalendar.monthStart(containing: .now)
     /// Midnight of the day whose breakdown is listed, if one is picked.
     @State private var selectedDay: Date?
+    /// `nil` shows every task.
+    @State private var filteredTaskID: StudyTask.ID?
 
     /// Fixed for the lifetime of the sheet: the grid should not re-mark
     /// "today" underneath the user at midnight.
     private let today = Date.now
 
     private var month: CalendarMonth {
-        SessionCalendar.month(containing: visibleMonth, from: tasks.tasks, calendar: calendar)
+        SessionCalendar.month(
+            containing: visibleMonth, from: tasks.tasks, matching: filter.wrappedValue, calendar: calendar
+        )
     }
 
     private var year: CalendarYear {
-        SessionCalendar.year(containing: visibleMonth, from: tasks.tasks, calendar: calendar)
+        SessionCalendar.year(
+            containing: visibleMonth, from: tasks.tasks, matching: filter.wrappedValue, calendar: calendar
+        )
+    }
+
+    private var filterOptions: [StudyTask] {
+        SessionHistory.tasksWithSessions(in: tasks.tasks)
+    }
+
+    /// Normalised on the way out, as in `SessionHistoryView`: a filter naming
+    /// a task that has since lost its sessions would leave the menu blank and
+    /// the calendar empty.
+    private var filter: Binding<StudyTask.ID?> {
+        Binding(
+            get: { filterOptions.contains { $0.id == filteredTaskID } ? filteredTaskID : nil },
+            set: { filteredTaskID = $0 }
+        )
     }
 
     /// Every day on show that can be selected.
@@ -82,6 +102,12 @@ struct SessionCalendarView: View {
                 visibleMonth = SessionCalendar.monthStart(containing: selectedDay, calendar: calendar)
             }
             if !visibleDays.contains(where: { $0.date == selectedDay }) { selectedDay = nil }
+            selectTodayIfStudied()
+        }
+        .onChange(of: filter.wrappedValue) {
+            // The picked day may have nothing left on it for the task now
+            // shown.
+            if !visibleDays.contains(where: { $0.date == selectedDay && $0.hasStudy }) { selectedDay = nil }
             selectTodayIfStudied()
         }
     }
@@ -147,6 +173,11 @@ private extension SessionCalendarView {
             Text("Calendar")
                 .font(.headline)
 
+            // Nothing to narrow down until at least one session exists.
+            if !filterOptions.isEmpty {
+                taskFilter
+            }
+
             Spacer()
 
             Picker("View", selection: $scope) {
@@ -188,6 +219,31 @@ private extension SessionCalendarView {
             .disabled(calendar.isDate(visibleMonth, equalTo: today, toGranularity: granularity))
         }
         .buttonStyle(.borderless)
+    }
+
+    var taskFilter: some View {
+        Picker("Task", selection: filter) {
+            Label {
+                Text("All Tasks")
+            } icon: {
+                Image.menuSymbol("square.stack")
+            }
+            .tag(StudyTask.ID?.none)
+
+            Divider()
+
+            ForEach(filterOptions) { task in
+                Label {
+                    Text(task.name)
+                } icon: {
+                    task.menuIcon
+                }
+                .tag(StudyTask.ID?.some(task.id))
+            }
+        }
+        .labelsHidden()
+        .pickerStyle(.menu)
+        .fixedSize()
     }
 
     var visibleTitle: String {
@@ -562,9 +618,11 @@ private extension SessionCalendarView {
     }
 
     func placeholder(hasStudy: Bool) -> String {
-        hasStudy
-            ? "Pick a day to see which tasks its time went to."
-            : "Nothing studied this \(scope.rawValue)."
+        if hasStudy { return "Pick a day to see which tasks its time went to." }
+        if let task = filterOptions.first(where: { $0.id == filter.wrappedValue }) {
+            return "Nothing studied for \(task.name) this \(scope.rawValue)."
+        }
+        return "Nothing studied this \(scope.rawValue)."
     }
 
     func summary(seconds: Int, days: Int) -> String {

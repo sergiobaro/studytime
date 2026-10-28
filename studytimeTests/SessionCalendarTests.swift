@@ -129,6 +129,25 @@ struct SessionCalendarTests {
         #expect(padding?.totalSeconds == 600)
     }
 
+    @Test func filteringByATaskLeavesOutTheOthers() {
+        let maths = StudyTask(name: "Maths", sessions: [session(day: 4, seconds: 600)])
+        let reading = StudyTask(name: "Reading", sessions: [
+            session(day: 4, hour: 11, seconds: 1_800),
+            session(day: 6, seconds: 900),
+        ])
+
+        let month = SessionCalendar.month(
+            containing: date(4), from: [maths, reading], matching: maths.id, calendar: calendar
+        )
+
+        #expect(day(month, 4)?.taskTotals.map(\.taskName) == ["Maths"])
+        #expect(month.totalSeconds == 600)
+        #expect(month.studiedDayCount == 1)
+        // The shading is measured against the filtered task's busiest day.
+        #expect(month.busiestSeconds == 600)
+        #expect(day(month, 6)?.hasStudy == false)
+    }
+
     @Test func aSessionRunningPastMidnightCountsOnTheDayItBegan() {
         let start = date(4, 23)
         let overnight = StudySession(
@@ -232,6 +251,18 @@ struct SessionCalendarYearTests {
         #expect(year.totalSeconds == 2_700)
         #expect(year.studiedDayCount == 2)
         #expect(year.busiestSeconds == 1_800)
+    }
+
+    @Test func aFilteredYearCountsOnlyThatTask() {
+        let maths = task("Maths", sessions: [(date(month: 1, day: 5), 600)])
+        let reading = task("Reading", sessions: [(date(month: 2, day: 9), 1_800)])
+
+        let year = SessionCalendar.year(
+            containing: date(month: 3, day: 1), from: [maths, reading], matching: reading.id, calendar: calendar
+        )
+
+        #expect(year.totalSeconds == 1_800)
+        #expect(year.studiedDayCount == 1)
     }
 
     @Test func theYearTitleIsTheYear() {

@@ -242,9 +242,11 @@ struct StudySessionTests {
         study(seconds: 10)
         let open = try! #require(tasks.sessionInProgress)
 
-        let earlier = tasks.addSession(to: maths.id, startedAt: clock.now.addingTimeInterval(-3600), seconds: 60)
+        let earlier = try! #require(
+            tasks.addSession(to: maths.id, startedAt: clock.now.addingTimeInterval(-3600), seconds: 60)
+        )
 
-        #expect(tasks.selectedTask?.sessions.map(\.id) == [earlier?.id, open.id])
+        #expect(tasks.selectedTask?.sessions.map(\.id) == [earlier.id, open.id])
         // The clock keeps extending the run it was already counting.
         study(seconds: 5)
         #expect(tasks.sessionInProgress?.seconds == 15)

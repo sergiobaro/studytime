@@ -96,27 +96,32 @@ enum SessionCalendar {
     /// A session counts towards the day it began on, matching
     /// `SessionHistory` — the two would otherwise disagree about a run that
     /// crossed midnight.
+    ///
+    /// With a `taskID`, only that task's sessions are counted.
     static func month(
         containing date: Date,
         from tasks: [StudyTask],
+        matching taskID: StudyTask.ID? = nil,
         calendar: Calendar = .current
     ) -> CalendarMonth {
         month(
             startingOn: monthStart(containing: date, calendar: calendar),
-            totals: totalsByDay(from: tasks, calendar: calendar),
+            totals: totalsByDay(from: tasks, matching: taskID, calendar: calendar),
             calendar: calendar
         )
     }
 
-    /// The year `date` falls in, month by month.
+    /// The year `date` falls in, month by month — narrowed to one task's
+    /// sessions when given a `taskID`.
     static func year(
         containing date: Date,
         from tasks: [StudyTask],
+        matching taskID: StudyTask.ID? = nil,
         calendar: Calendar = .current
     ) -> CalendarYear {
         let start = yearStart(containing: date, calendar: calendar)
         // Totalled once and shared, rather than once for every month.
-        let totals = totalsByDay(from: tasks, calendar: calendar)
+        let totals = totalsByDay(from: tasks, matching: taskID, calendar: calendar)
         let months = (0..<12).compactMap { offset -> CalendarMonth? in
             guard let first = calendar.date(byAdding: .month, value: offset, to: start) else { return nil }
             return month(startingOn: first, totals: totals, calendar: calendar)
@@ -212,12 +217,17 @@ enum SessionCalendar {
 private extension SessionCalendar {
 
     /// Every task's seconds on every day that has any, keyed by midnight.
-    static func totalsByDay(from tasks: [StudyTask], calendar: Calendar) -> [Date: [TaskTotal]] {
+    static func totalsByDay(
+        from tasks: [StudyTask],
+        matching taskID: StudyTask.ID?,
+        calendar: Calendar
+    ) -> [Date: [TaskTotal]] {
         var secondsByDay: [Date: [String: Int]] = [:]
         // Names are unique, so they are enough to find a task's style again.
         let tasksByName = Dictionary(tasks.map { ($0.name, $0) }, uniquingKeysWith: { first, _ in first })
+        let matched = taskID.map { id in tasks.filter { $0.id == id } } ?? tasks
 
-        for task in tasks {
+        for task in matched {
             for session in task.sessions {
                 let day = calendar.startOfDay(for: session.startedAt)
                 secondsByDay[day, default: [:]][task.name, default: 0] += session.seconds
